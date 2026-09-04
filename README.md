@@ -1,132 +1,115 @@
-# Vectyra
+<div align="center">
 
-### Enterprise Performance, Roadmap & Talent Intelligence Platform
+# 🔷 V E C T Y R A
+### Team Roadmaps • Task Execution • 360° Talent Intelligence
 
-> **Align strategy. Execute with clarity. Grow talent.**
+![Vectyra Hero Banner](./vectyra_banner.jpg)
 
-Vectyra is an enterprise management platform designed to connect **strategic planning, team execution, employee performance, and talent development** in one unified system.
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-20.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Express.js-4.x-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Security-RBAC%20%2B%20JWT-critical?style=for-the-badge" alt="Security" />
+</p>
 
-It brings together **team roadmaps, task execution, employee goals, 360° appraisals, competency tracking, feedback, and role-based governance** to provide organizations with a complete view of both business execution and people development.
-
----
-
-## ✨ Overview
-
-Modern organizations often manage roadmaps, tasks, employee performance, feedback, and HR processes across multiple disconnected systems.
-
-**Vectyra brings these capabilities together.**
-
-It creates a single platform where:
-
-- 🧭 Teams can plan and track strategic roadmaps
-- ⚡ Managers can assign and monitor tasks
-- 🎯 Employees can manage goals and deliverables
-- ⭐ Managers and HR can conduct 360° performance reviews
-- 🧠 Organizations can track skills and competencies
-- 📊 Leadership can monitor performance and progress
-- 🔐 HR and administrators can manage role-based access and governance
-
-The goal is to create a continuous connection between:
-
-**Strategy → Execution → Performance → Growth**
+</div>
 
 ---
 
-## 🚀 Core Capabilities
+## 🌟 Overview
 
-### 🧭 Strategic Roadmaps
+**Vectyra** is a unified, enterprise-grade Performance & Execution Operating System that bridges the gap between **strategic team roadmaps**, **on-the-ground task execution**, and **confidential 360° employee appraisals**.
 
-Plan and track organizational and team initiatives through structured roadmaps.
-
-- Quarterly planning
-- Team objectives
-- Strategic initiatives
-- Milestones
-- Deliverables
-- Progress tracking
-- Roadmap visibility
-- Ownership and accountability
+Designed for high-velocity engineering, product, and cross-functional teams, Vectyra replaces fragmented spreadsheets and basic survey forms with a centralized, data-driven intelligence hub.
 
 ---
 
-### ⚡ Task & Execution Management
+## ✨ Key Features
 
-Turn roadmap objectives into actionable work.
+### 🗺️ 1. Team Strategic Roadmaps & Task Execution
+* **Quarterly Roadmap Management:** Managers and leadership plan roadmaps across Q1–Q4 with strategic milestones.
+* **Deliverable Breakdown & Assignments:** Break milestones down into actionable tasks, assign individual owners, set priorities (Low, Medium, High, Critical), and track deadlines.
+* **Granular Task Statuses:** Team members advance tasks in real-time (`To Do`, `In Progress`, `Under Review`, `Completed`, `Blocked`).
 
-- Task creation and assignment
-- Task ownership
-- Priority management
-- Status tracking
-- Due dates
-- Deliverables
-- Progress monitoring
-- Team-level execution visibility
+### 🎯 2. Confidential 360° Appraisal Engine
+* **Role-Isolated Executive Feedback Routing:**
+  * Feedback submitted for **Super Admin** is routed **strictly to HR** (hidden from Super Admin to eliminate bias).
+  * Feedback submitted for **HR** is routed **strictly to Super Admin** (hidden from HR).
+  * All other reviews across the organization are accessible by both Super Admin and HR.
+* **Multi-Angle Reviews:** Self-assessments, peer reviews, direct manager evaluations, and cross-functional ratings.
+* **My Submissions Vault:** Employees and managers can privately review everything they have submitted without exposing company-wide peer ratings.
 
----
+### 📊 3. Technical Skill Matrix & Competency Radars
+* **Domain-Specific Skill Mapping:** Tailored competency benchmarks for specialized teams (SDN Controller, Core 5G, Backend Platform, QA, Product, HR).
+* **Multi-Level Scoring:** 1 to 5 competency evaluations (Beginner to Subject Matter Expert).
 
-### ⭐ 360° Employee Appraisals
-
-A comprehensive performance evaluation system that provides feedback from multiple perspectives.
-
-- Employee self-assessment
-- Manager evaluation
-- Peer feedback
-- HR evaluation
-- Leadership feedback
-- Performance criteria
-- Strengths and improvement areas
-- Review cycles
-- Confidential feedback
+### 📈 4. Executive Analytics & Health Hub
+* **Real-time KPI Scorecards:** Active reviews, roadmap health velocity, eNPS scores, and feedback volume.
+* **Interactive Competency Radar:** Visual radar charts highlighting organizational strengths and training opportunities.
+* **Department Benchmark Matrix:** Comparison of engagement, roadmap delivery speed, and competency ratings by department.
 
 ---
 
-### 🧠 Talent & Competency Intelligence
+## 🔒 Role-Based Access Control (RBAC)
 
-Understand employee capabilities beyond traditional performance ratings.
-
-- Skill matrix
-- Competency tracking
-- Role-based competencies
-- Skill gaps
-- Development areas
-- Employee capability tracking
-- Growth recommendations
-- Competency visualization
-
----
-
-### 🎯 Goals & Performance
-
-Connect individual employee goals with organizational objectives.
-
-- Individual goals
-- Team goals
-- Quarterly objectives
-- Key deliverables
-- Progress tracking
-- Performance indicators
-- Goal ownership
-- Achievement tracking
+| Capability / Module | Employee 👤 | Manager 🏆 | Admin (HR) ⚙️ | Super Admin 👑 |
+| :--- | :---: | :---: | :---: | :---: |
+| **Submit 360° Feedback** | ✅ | ✅ | ✅ | ✅ |
+| **View Own Submissions** | ✅ (Own Only) | ✅ (Own Only) | ✅ (Own Only) | ✅ (Own Only) |
+| **Feedback for Super Admin** | ❌ Blocked | ❌ Blocked | ✅ **Routed to HR** | ❌ **Hidden** |
+| **Feedback for HR (Admin)** | ❌ Blocked | ❌ Blocked | ❌ **Hidden** | ✅ **Routed to Super Admin** |
+| **Team Roadmaps & Tasks** | ✅ (Own Team) | ✅ (Managed Teams) | ✅ **All Teams (Read-Only)** | ✅ **All Teams (Full Control)** |
+| **Create Roadmaps & Assign Tasks** | ❌ Blocked | ✅ **Own Team** | ❌ **Read-Only** | ✅ **All Teams** |
+| **Update Assigned Task Progress** | ✅ (Own Tasks) | ✅ | ❌ **Read-Only** | ✅ |
+| **User & Account Provisioning** | ❌ Blocked | ❌ Blocked | ✅ | ✅ |
+| **Executive Analytics Hub** | ❌ Blocked | ❌ Blocked | ✅ | ✅ |
 
 ---
 
-### 🛣️ Employee Growth Roadmaps
+## 🚀 Quick Start & Deployment
 
-Create structured development paths for employees.
+### 🐳 Option A: Docker Compose (Recommended for VMs / Production)
 
-A growth roadmap can connect:
+Deploy unified single-container frontend/backend with persistent PostgreSQL:
 
-```text
-Current Skills
-      ↓
-Skill Gaps
-      ↓
-Development Goals
-      ↓
-Learning / Tasks
-      ↓
-Milestones
-      ↓
-Target Competencies
-      ↓
-Career Growth
+```bash
+# 1. Build and start containers in the background
+docker compose up -d --build
+
+# 2. View running logs
+docker compose logs -f app
+```
+
+Access the portal on any machine in your network at:
+`http://<YOUR_VM_IP>:3000`
+
+---
+
+### 💻 Option B: Local Development
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Configure environment in .env
+PORT=3000
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/vectyra
+JWT_SECRET=your_jwt_secret
+
+# 3. Start the server
+npm run dev
+```
+
+---
+
+## 🔑 Default Super Admin Credentials
+
+* **Email:** `saurabhsharma@niralnetworks.in`
+* **Password:** `superadmin`
+
+---
+
+## 📄 License & Attribution
+
+Internal Enterprise Platform — Built with Node.js, Express, PostgreSQL, and Modern CSS.
