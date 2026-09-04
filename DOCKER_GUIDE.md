@@ -62,7 +62,7 @@ docker compose logs -f app
    *(Example: `http://192.168.1.50:3000` or `http://10.0.0.12:3000`)*
 
 3. Default Super Admin Login:
-   - **Email**: `saurabhsharma@niralnetworks.in` (or `superadmin@company.com`)
+   - **Email**: `admin@gmail.com` (or `superadmin@company.com`)
    - **Password**: `superadmin` (or `demo123`)
 
 ---

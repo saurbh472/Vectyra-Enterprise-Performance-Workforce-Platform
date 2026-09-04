@@ -15,12 +15,12 @@ async function doLogin() {
   setBtnLoad('loginBtn', true);
 
   // Demo emails — work in demo mode
-  const DEMO_EMAILS = ['saurabhsharma@niralnetworks.in','superadmin@company.com','hr@company.com','manager@company.com','employee@company.com'];
+  const DEMO_EMAILS = ['admin@gmail.com','superadmin@company.com','hr@company.com','manager@company.com','employee@company.com'];
   const isDemoEmail = DEMO_EMAILS.includes(email.toLowerCase());
 
   if (isDemo && isDemoEmail) {
     const DEMO_CREDENTIALS = [
-      { email: 'saurabhsharma@niralnetworks.in', pass: 'superadmin' },
+      { email: 'admin@gmail.com', pass: 'superadmin' },
       { email: 'superadmin@company.com', pass: 'demo123' },
       { email: 'hr@company.com',         pass: 'demo123' },
       { email: 'manager@company.com',    pass: 'demo123' },
@@ -88,7 +88,7 @@ function authErr(msg, success = false) {
 function enableDemoMode() {
   isDemo = true;
   localStorage.setItem('PC_DEMO_MODE', 'true');
-  document.getElementById('loginEmail').value = 'saurabhsharma@niralnetworks.in';
+  document.getElementById('loginEmail').value = 'admin@gmail.com';
   document.getElementById('loginPass').value  = 'superadmin';
   doLogin();
 }
