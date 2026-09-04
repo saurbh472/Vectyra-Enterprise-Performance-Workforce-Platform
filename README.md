@@ -41,7 +41,7 @@ Designed for high-velocity engineering, product, and cross-functional teams, Vec
 * **My Submissions Vault:** Employees and managers can privately review everything they have submitted without exposing company-wide peer ratings.
 
 ### 📊 3. Technical Skill Matrix & Competency Radars
-* **Domain-Specific Skill Mapping:** Tailored competency benchmarks for specialized teams (SDN Controller, Core 5G, Backend Platform, QA, Product, HR).
+* **Domain-Specific Skill Mapping:** Tailored competency benchmarks for specialized teams (Cloud Architecture, Backend Platform, Frontend, QA, Product, HR).
 * **Multi-Level Scoring:** 1 to 5 competency evaluations (Beginner to Subject Matter Expert).
 
 ### 📈 4. Executive Analytics & Health Hub
@@ -67,39 +67,63 @@ Designed for high-velocity engineering, product, and cross-functional teams, Vec
 
 ---
 
-## 🚀 Quick Start & Deployment
+## 🚀 Quick Start & How to Run
 
-### 🐳 Option A: Docker Compose (Recommended for VMs / Production)
-
-Deploy unified single-container frontend/backend with persistent PostgreSQL:
-
-```bash
-# 1. Build and start containers in the background
-docker compose up -d --build
-
-# 2. View running logs
-docker compose logs -f app
-```
-
-Access the portal on any machine in your network at:
-`http://<YOUR_VM_IP>:3000`
+Vectyra supports **Dual Execution Modes**:
+1. **PostgreSQL Mode:** Connects automatically if PostgreSQL is available (`.env` configured).
+2. **Instant In-Memory Mode:** If PostgreSQL is offline/unreachable, Vectyra falls back to an internal in-memory database automatically, allowing full application usage out of the box without setup!
 
 ---
 
-### 💻 Option B: Local Development
+### 💻 Step-by-Step Local Setup
+
+#### 1. Install Dependencies
+```bash
+npm install
+```
+
+#### 2. Configure Environment (`.env`)
+Create or edit `.env` in the root folder:
+```env
+PORT=3000
+JWT_SECRET=vectyra_super_secret_jwt_key_2026
+
+# PostgreSQL Settings (Optional — falls back to in-memory mode if offline)
+PGHOST=localhost
+PGPORT=5432
+PGUSER=postgres
+PGPASSWORD=postgres
+PGDATABASE=vectyra
+```
+
+#### 3. Start the Application Server
+```bash
+# Start server with node
+npm run dev
+# or
+node server.js
+```
+
+#### 4. Open in Browser
+Access the web portal at:  
+👉 **`http://localhost:3000`**
+
+---
+
+### 🐳 Docker Deployment (Recommended for Servers & VMs)
+
+Deploy unified single-container app with persistent PostgreSQL:
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Build and start containers in background
+docker compose up -d --build
 
-# 2. Configure environment in .env
-PORT=3000
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/vectyra
-JWT_SECRET=your_jwt_secret
-
-# 3. Start the server
-npm run dev
+# 2. View container logs
+docker compose logs -f app
 ```
+
+Access the portal on any machine in your network at:  
+👉 **`http://<YOUR_SERVER_IP>:3000`**
 
 ---
 
