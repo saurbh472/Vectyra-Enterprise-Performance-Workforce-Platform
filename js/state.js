@@ -16,8 +16,8 @@ const MOCK_ROADMAPS = [
   {
     id: 'rm-1',
     team_id: 't2',
-    title: '5G Core Network & SDN Controller Integration',
-    description: 'Implement high-throughput packet routing, distributed caching, and automated failover controllers.',
+    title: 'Enterprise Cloud Microservices & API Gateway Modernization',
+    description: 'Implement high-throughput API routing, distributed caching, resilience patterns, and automated failover.',
     quarter: 'Q3 2026',
     year: 2026,
     status: 'in_progress',
@@ -58,8 +58,8 @@ const MOCK_ROADMAP_TASKS = [
   {
     id: 'task-1',
     roadmap_id: 'rm-1',
-    title: 'Design Threading & Caffeine Cache Architecture',
-    description: 'Optimize concurrent memory lookups for active 5G network flow tables.',
+    title: 'Design Threading & Redis Cache Architecture',
+    description: 'Optimize concurrent memory lookups for active API gateway endpoints.',
     assigned_to: 'u4',
     assigned_by: 'u2',
     priority: 'urgent',
@@ -73,8 +73,8 @@ const MOCK_ROADMAP_TASKS = [
   {
     id: 'task-2',
     roadmap_id: 'rm-1',
-    title: 'Implement SDN Controller Packet Analysis with Wireshark',
-    description: 'Set up real-time packet inspection and automated alerting for dropped frames.',
+    title: 'Implement Telemetry Tracing & Audit Logging',
+    description: 'Set up real-time telemetry tracing and automated alerting for system security events.',
     assigned_to: 'u4',
     assigned_by: 'u2',
     priority: 'high',

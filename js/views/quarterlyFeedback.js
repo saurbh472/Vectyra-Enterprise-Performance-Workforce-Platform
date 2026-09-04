@@ -15,7 +15,7 @@ let qrSkillSearchQuery = '';
 // Preset recommended scopes by team department/domain
 const TEAM_PRESET_SCOPES = {
   't1': ['Frontend', 'UI Components', 'State Management', 'Performance & Web Vitals', 'Testing'],
-  't2': ['Backend', 'Frontend', 'DevOps', 'Networking', 'Database', 'Cloud & K8s', 'Core 5G', 'Security'],
+  't2': ['Backend', 'Frontend', 'DevOps', 'Networking', 'Database', 'Cloud & K8s', 'Core Platform', 'Security'],
   't3': ['UI Design', 'UX Research', 'Design Systems', 'Product Strategy', 'Prototyping', 'Product Analytics'],
   't4': ['Recruitment', 'HR Operations', 'Payroll & Compliance', 'Employee Relations', 'Culture & Engagement'],
   't5': ['SEO', 'Content Writing', 'Paid Media', 'Growth Marketing', 'Social Media', 'B2B Lead Gen', 'Branding']
@@ -24,14 +24,14 @@ const TEAM_PRESET_SCOPES = {
 // Loaded state for current form session
 let qrSelfReviewState = {
   months: [
-    { month: 'April, 2026', targets: ['Understand SDN Controller architecture', 'Contribute to licensing implementation'], contributions: ['Integrated ELK Stack with core application', 'Implemented RBAC enhancements'], topContribution: { targetResult: 'Target: Improve observability\nResult: 100% ELK logs integrated', goodPractice: 'Modular service separation', lessonLearnt: 'Deep understanding of SDN flow' } },
-    { month: 'May, 2026', targets: ['Improve RBAC maintainability', 'Tejas API development'], contributions: ['Refactored RBAC code', 'Integrated Tejas APIs'], topContribution: { targetResult: 'Target: RBAC refactor\nResult: 40% latency reduction', goodPractice: 'Pair programming with backend team', lessonLearnt: 'Keycloak token caching' } },
-    { month: 'June, 2026', targets: ['TimescaleDB research', 'RDSO implementation'], contributions: ['Verified RBAC statistics', 'Resolved licensing database deletion issue'], topContribution: { targetResult: 'Target: TimescaleDB PoC\nResult: Compression verified', goodPractice: 'Automated test suites', lessonLearnt: 'Chunk management in TimescaleDB' } },
+    { month: 'April, 2026', targets: ['Master Core Platform architecture', 'Contribute to cloud security & licensing implementation'], contributions: ['Integrated ELK & Observability Stack', 'Implemented RBAC enhancements'], topContribution: { targetResult: 'Target: Improve observability\nResult: 100% ELK logs integrated', goodPractice: 'Modular service separation', lessonLearnt: 'Deep understanding of distributed platform flow' } },
+    { month: 'May, 2026', targets: ['Improve RBAC maintainability', 'REST API Gateway integration'], contributions: ['Refactored RBAC code', 'Integrated Core Microservice APIs'], topContribution: { targetResult: 'Target: RBAC refactor\nResult: 40% latency reduction', goodPractice: 'Pair programming with backend team', lessonLearnt: 'Keycloak token caching' } },
+    { month: 'June, 2026', targets: ['PostgreSQL & Caching research', 'Audit log implementation'], contributions: ['Verified RBAC statistics', 'Resolved licensing database deletion issue'], topContribution: { targetResult: 'Target: Database optimization\nResult: Query indexing verified', goodPractice: 'Automated test suites', lessonLearnt: 'Partition management in PostgreSQL' } },
     { month: 'July, 2026', targets: ['Database scalability improvements', 'Enhance security'], contributions: ['Designed system architecture', 'Fixed critical licensing workflow issues'], topContribution: { targetResult: 'Target: Scaling architecture\nResult: Multi-site support finalized', goodPractice: 'End-to-end integration tests', lessonLearnt: 'High availability clustering' } }
   ],
-  goalsForNextQuarter: '• Complete and stabilize Kubernetes deployment of 5G Core & SDN components.\n• Improve observability with Prometheus & Grafana.\n• Expand database indexing for multi-tenant scalability.',
-  areasOfImprovement: '• Deepen cloud-native architecture & Kubernetes orchestration knowledge.\n• Strengthen automated test coverage for newly developed controller microservices.',
-  suggestions: '• Regular knowledge-sharing sessions on distributed architecture would be beneficial for the SDN team.\n• Structured architectural design reviews before major feature sprints.',
+  goalsForNextQuarter: '• Complete and stabilize Kubernetes cloud deployment of core platform microservices.\n• Improve observability with Prometheus & Grafana.\n• Expand database indexing for multi-tenant scalability.',
+  areasOfImprovement: '• Deepen cloud-native architecture & Kubernetes orchestration knowledge.\n• Strengthen automated test coverage for newly developed platform microservices.',
+  suggestions: '• Regular knowledge-sharing sessions on distributed cloud architecture would be beneficial for the backend engineering team.\n• Structured architectural design reviews before major feature sprints.',
   managerFeedback: ''
 };
 
@@ -39,8 +39,8 @@ let qrKpiState = [
   { id: 'kpi1', name: 'Timeline Adherence', description: '• Completing assigned tasks on time\n• Prioritizing work effectively\n• Managing workload efficiently\n• Avoiding unnecessary delays', selfRating: 5, example: 'Delivered all sprint deliverables on or before deadlines with zero blockers.', challenges: 'Initial delays on TimescaleDB PoC were resolved with team syncs.', managerRating: 0, managerComments: '' },
   { id: 'kpi2', name: 'Initiative Taking', description: '• Taking ownership\n• Solving problems independently\n• Suggesting improvements\n• Volunteering for responsibilities', selfRating: 5, example: 'Spearheaded the ELK stack logging and RBAC token caching redesign.', challenges: 'None', managerRating: 0, managerComments: '' },
   { id: 'kpi3', name: 'Quality of Work', description: '• Delivering accurate work\n• Following standards\n• Reducing errors\n• Attention to detail', selfRating: 5, example: 'Maintained zero regression defects on the licensing workflow release.', challenges: 'Edge cases in multi-tenant session cleanup addressed.', managerRating: 0, managerComments: '' },
-  { id: 'kpi4', name: 'Communication & Collaboration', description: '• Clear communication\n• Knowledge sharing\n• Team collaboration\n• Positive participation', selfRating: 5, example: 'Conducted walkthrough sessions with frontend & QA teams for Tejas APIs.', challenges: 'None', managerRating: 0, managerComments: '' },
-  { id: 'kpi5', name: 'Domain Knowledge', description: '• Code understanding\n• Technical knowledge\n• Business knowledge\n• Continuous learning', selfRating: 5, example: 'Extensive research into SDN Controller protocol flows and 5G NF specs.', challenges: 'Continuously tracking 3GPP release updates.', managerRating: 0, managerComments: '' },
+  { id: 'kpi4', name: 'Communication & Collaboration', description: '• Clear communication\n• Knowledge sharing\n• Team collaboration\n• Positive participation', selfRating: 5, example: 'Conducted walkthrough sessions with frontend & QA teams for Core Microservice APIs.', challenges: 'None', managerRating: 0, managerComments: '' },
+  { id: 'kpi5', name: 'Domain Knowledge', description: '• Code understanding\n• Technical knowledge\n• Business knowledge\n• Continuous learning', selfRating: 5, example: 'Extensive research into distributed cloud architecture and microservices security.', challenges: 'Keeping pace with evolving cloud security and API standards.', managerRating: 0, managerComments: '' },
   { id: 'kpi6', name: 'Leadership Qualities', description: '• Ownership\n• Decision making\n• Mentoring\n• Positive influence', selfRating: 4.5, example: 'Mentored junior developers on Spring Boot and Docker best practices.', challenges: 'Expanding mentorship to cross-functional teams.', managerRating: 0, managerComments: '' }
 ];
 
@@ -150,9 +150,9 @@ function onQrYearChange(y) {
 function updateQuarterMonths() {
   if (qrSelectedQuarter.includes('April')) {
     qrSelfReviewState.months = [
-      { month: `April, ${qrSelectedYear}`, targets: ['Understand SDN Controller architecture', 'Licensing implementation'], contributions: ['Integrated ELK Stack', 'RBAC enhancements'], topContribution: { targetResult: 'Observability enhanced', goodPractice: 'Modular code', lessonLearnt: 'Flow tables' } },
-      { month: `May, ${qrSelectedYear}`, targets: ['RBAC maintainability', 'Tejas API development'], contributions: ['Refactored RBAC code', 'Integrated APIs'], topContribution: { targetResult: 'Latency reduced', goodPractice: 'Pair review', lessonLearnt: 'Keycloak tokens' } },
-      { month: `June, ${qrSelectedYear}`, targets: ['TimescaleDB research', 'RDSO implementation'], contributions: ['Verified statistics', 'Resolved license deletion bug'], topContribution: { targetResult: 'Compression verified', goodPractice: 'Unit test suites', lessonLearnt: 'Chunk policies' } },
+      { month: `April, ${qrSelectedYear}`, targets: ['Master Core Platform architecture', 'Licensing implementation'], contributions: ['Integrated ELK Stack', 'RBAC enhancements'], topContribution: { targetResult: 'Observability enhanced', goodPractice: 'Modular code', lessonLearnt: 'Distributed architecture' } },
+      { month: `May, ${qrSelectedYear}`, targets: ['RBAC maintainability', 'REST API Gateway integration'], contributions: ['Refactored RBAC code', 'Integrated APIs'], topContribution: { targetResult: 'Latency reduced', goodPractice: 'Pair review', lessonLearnt: 'Keycloak tokens' } },
+      { month: `June, ${qrSelectedYear}`, targets: ['Database optimization', 'Audit log implementation'], contributions: ['Verified statistics', 'Resolved license deletion bug'], topContribution: { targetResult: 'Indexing verified', goodPractice: 'Unit test suites', lessonLearnt: 'Partition policies' } },
       { month: `July, ${qrSelectedYear}`, targets: ['Database scalability', 'Enhance security'], contributions: ['Designed architecture', 'Fixed licensing issues'], topContribution: { targetResult: 'Multi-site support', goodPractice: 'E2E testing', lessonLearnt: 'Clustering' } }
     ];
   } else if (qrSelectedQuarter.includes('Jan')) {
@@ -235,7 +235,7 @@ function renderQrActiveTab() {
 // FORM VIEW (3-STEP EXECUTIVE WIZARD)
 // ═══════════════════════════════════════════════════════════════════════
 function renderQrFormView(container) {
-  const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'SG CORE SDN TEAM (Backend Platform)';
+  const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'Backend & Platform Engineering';
 
   container.innerHTML = `
     <!-- WIZARD STEP HEADER -->
@@ -533,7 +533,7 @@ function setKpiRating(kIdx, rating) {
 // STEP 3: SKILL MATRIX (DYNAMIC SCOPE BADGES & SCOPE FILTERING)
 // -----------------------------------------------------------------------
 function renderSkillMatrixStep(container) {
-  const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'SDN Controller Team';
+  const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'Backend & Platform Engineering';
   
   // Extract all unique categories and unique scope tags from loaded skills
   const categories = Array.from(new Set(qrSkillMatrixState.map(s => s.category).filter(Boolean)));

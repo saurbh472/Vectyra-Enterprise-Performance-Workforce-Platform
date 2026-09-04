@@ -25,7 +25,8 @@ const pgConfig = {
   user: process.env.PGUSER || 'postgres',
   password: process.env.PGPASSWORD || 'postgres',
   database: process.env.PGDATABASE || 'vectyra',
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 2000
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -64,7 +65,7 @@ let memCycles = [
 
 let memQuarterlyReviews = [];
 let memSkillTemplates = [
-  // Topics (SDN Controller Team / Team t2 / SG CORE SDN TEAM)
+  // Topics (Backend Platform Team / Team t2)
   { id: 'st-1', team_id: 't2', category: 'Topics', skill_name: 'Design Pattern', scope: 'Backend, Frontend', is_backend: true, is_frontend: true },
   { id: 'st-2', team_id: 't2', category: 'Topics', skill_name: 'Schema Designing', scope: 'Backend', is_backend: true, is_frontend: false },
   { id: 'st-3', team_id: 't2', category: 'Topics', skill_name: 'Threading', scope: 'Backend', is_backend: true, is_frontend: false },
@@ -72,11 +73,11 @@ let memSkillTemplates = [
   { id: 'st-5', team_id: 't2', category: 'Topics', skill_name: 'Caching', scope: 'Backend', is_backend: true, is_frontend: false },
   { id: 'st-6', team_id: 't2', category: 'Topics', skill_name: 'Browser Cookies and Storage', scope: 'Frontend', is_backend: false, is_frontend: true },
   { id: 'st-7', team_id: 't2', category: 'Topics', skill_name: 'Linux OS', scope: 'Backend, DevOps', is_backend: true, is_frontend: true },
-  { id: 'st-8', team_id: 't2', category: 'Topics', skill_name: '5G NF Overall', scope: 'Core Network', is_backend: true, is_frontend: true },
-  { id: 'st-9', team_id: 't2', category: 'Topics', skill_name: '4G NF Overall', scope: 'Core Network', is_backend: true, is_frontend: true },
+  { id: 'st-8', team_id: 't2', category: 'Topics', skill_name: 'Cloud Infrastructure & K8s', scope: 'Cloud & DevOps', is_backend: true, is_frontend: true },
+  { id: 'st-9', team_id: 't2', category: 'Topics', skill_name: 'Distributed Systems & Resilience', scope: 'Architecture', is_backend: true, is_frontend: true },
   { id: 'st-10', team_id: 't2', category: 'Topics', skill_name: 'Virtualization', scope: 'DevOps, Cloud', is_backend: true, is_frontend: false },
   { id: 'st-11', team_id: 't2', category: 'Topics', skill_name: 'Microservices', scope: 'Backend, Architecture', is_backend: true, is_frontend: false },
-  { id: 'st-12', team_id: 't2', category: 'Topics', skill_name: 'SDN Controller', scope: 'SDN & Frontend', is_backend: false, is_frontend: true },
+  { id: 'st-12', team_id: 't2', category: 'Topics', skill_name: 'API Gateway Routing', scope: 'Backend Architecture', is_backend: true, is_frontend: true },
   { id: 'st-13', team_id: 't2', category: 'Topics', skill_name: 'UI/UX', scope: 'Frontend, Design', is_backend: false, is_frontend: true },
   { id: 'st-14', team_id: 't2', category: 'Topics', skill_name: 'Browser WebKit', scope: 'Frontend Engine', is_backend: false, is_frontend: true },
   { id: 'st-15', team_id: 't2', category: 'Topics', skill_name: 'UI Responsiveness', scope: 'Frontend UI', is_backend: false, is_frontend: true },
@@ -97,8 +98,8 @@ let memSkillTemplates = [
   // Tools
   { id: 'st-25', team_id: 't2', category: 'Tools', skill_name: 'JUnit', scope: 'Testing, QA', is_backend: true, is_frontend: false },
   { id: 'st-26', team_id: 't2', category: 'Tools', skill_name: 'KeyCloak', scope: 'Security, Auth', is_backend: true, is_frontend: false },
-  { id: 'st-27', team_id: 't2', category: 'Tools', skill_name: 'Caffeine Cache', scope: 'Backend Caching', is_backend: true, is_frontend: false },
-  { id: 'st-28', team_id: 't2', category: 'Tools', skill_name: 'Wireshark', scope: 'Packet Analysis', is_backend: true, is_frontend: false },
+  { id: 'st-27', team_id: 't2', category: 'Tools', skill_name: 'Redis Cache', scope: 'Backend Caching', is_backend: true, is_frontend: false },
+  { id: 'st-28', team_id: 't2', category: 'Tools', skill_name: 'Prometheus & Grafana', scope: 'Observability & Metrics', is_backend: true, is_frontend: false },
   { id: 'st-29', team_id: 't2', category: 'Tools', skill_name: 'Browser DevTools', scope: 'Frontend Debugging', is_backend: true, is_frontend: true },
   { id: 'st-30', team_id: 't2', category: 'Tools', skill_name: 'Swagger UI', scope: 'API Docs', is_backend: true, is_frontend: true },
   { id: 'st-31', team_id: 't2', category: 'Tools', skill_name: 'API Testing Tools', scope: 'QA, Integration', is_backend: true, is_frontend: true },
@@ -150,9 +151,9 @@ let memSkillTemplates = [
 let memRoadmaps = [
   {
     id: 'rm-1',
-    team_id: 't2', // Backend Platform / SDN Team
-    title: '5G Core Network & SDN Controller Integration',
-    description: 'Implement high-throughput packet routing, distributed caching, and automated failover controllers.',
+    team_id: 't2', // Backend Platform Team
+    title: 'Enterprise Cloud Microservices & API Gateway Modernization',
+    description: 'Implement high-throughput API routing, distributed caching, resilience patterns, and automated failover.',
     quarter: 'Q3 2026',
     year: 2026,
     status: 'in_progress',
@@ -193,8 +194,8 @@ let memRoadmapTasks = [
   {
     id: 'task-1',
     roadmap_id: 'rm-1',
-    title: 'Design Threading & Caffeine Cache Architecture',
-    description: 'Optimize concurrent memory lookups for active 5G network flow tables.',
+    title: 'Design Threading & Redis Cache Architecture',
+    description: 'Optimize concurrent memory lookups for active API gateway endpoints.',
     assigned_to: 'u4', // Marcus Vance (Employee)
     assigned_by: 'u2', // Sarah Chen (Manager)
     priority: 'urgent',
@@ -208,8 +209,8 @@ let memRoadmapTasks = [
   {
     id: 'task-2',
     roadmap_id: 'rm-1',
-    title: 'Implement SDN Controller Packet Analysis with Wireshark',
-    description: 'Set up real-time packet inspection and automated alerting for dropped frames.',
+    title: 'Implement Telemetry Tracing & Audit Logging',
+    description: 'Set up real-time telemetry tracing and automated alerting for system security events.',
     assigned_to: 'u4',
     assigned_by: 'u2',
     priority: 'high',
@@ -261,17 +262,17 @@ async function ensureSuperAdminAccount() {
 
   if (usePg) {
     try {
-      const check = await pool.query('SELECT id FROM profiles WHERE LOWER(email) = $1', [emailClean]);
-      if (check.rows.length === 0) {
-        await pool.query(
-          `INSERT INTO profiles (id, full_name, email, password_hash, role, department, avatar_initials, created_at)
-           VALUES ($1, $2, $3, $4, 'super_admin', 'Executive', 'SA', NOW())`,
-          ['u-superadmin-default', HARDCODED_SUPERADMIN_NAME, emailClean, hash]
-        );
-        console.log(`✅ Default SuperAdmin account (${HARDCODED_SUPERADMIN_EMAIL}) created in PostgreSQL database.`);
-      } else {
-        console.log(`ℹ️ SuperAdmin account (${HARDCODED_SUPERADMIN_EMAIL}) already exists in PostgreSQL database. One-time creation skipped.`);
-      }
+      await pool.query(
+        `INSERT INTO profiles (id, full_name, email, password_hash, role, department, avatar_initials, created_at)
+         VALUES ($1, $2, $3, $4, 'super_admin', 'Executive', 'SA', NOW())
+         ON CONFLICT (id) DO UPDATE SET 
+           email = EXCLUDED.email, 
+           full_name = EXCLUDED.full_name, 
+           password_hash = EXCLUDED.password_hash, 
+           avatar_initials = EXCLUDED.avatar_initials`,
+        ['u-superadmin-default', HARDCODED_SUPERADMIN_NAME, emailClean, hash]
+      );
+      console.log(`✅ Default SuperAdmin account (${HARDCODED_SUPERADMIN_EMAIL}) verified & updated in PostgreSQL database.`);
     } catch (err) {
       console.error('Error verifying SuperAdmin account in PostgreSQL:', err.message);
     }
@@ -527,6 +528,11 @@ function avatarInitials(name) {
 // ═══════════════════════════════════════════════════════════════════════
 // REST API ROUTES
 // ═══════════════════════════════════════════════════════════════════════
+
+// 0. HEALTH CHECK
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', mode: usePg ? 'postgresql' : 'in-memory', timestamp: new Date().toISOString() });
+});
 
 // 1. AUTH LOGIN
 app.post('/api/auth/login', async (req, res) => {

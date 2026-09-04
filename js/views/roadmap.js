@@ -418,7 +418,7 @@ function openCreateRoadmapModal() {
     </div>
     <div class="form-group mb16">
       <label class="form-label">Roadmap Milestone Title *</label>
-      <input class="form-input" id="rmTitle" placeholder="e.g. 5G Core Network &amp; SDN Controller Integration">
+      <input class="form-input" id="rmTitle" placeholder="e.g. Enterprise Cloud Microservices &amp; API Modernization">
     </div>
     <div class="form-group mb16">
       <label class="form-label">Description / Strategic Objective</label>
@@ -621,7 +621,7 @@ function openCreateTaskModal(roadmapId) {
   document.getElementById('modalBody').innerHTML = `
     <div class="form-group mb16">
       <label class="form-label">Task Deliverable Title *</label>
-      <input class="form-input" id="taskTitle" placeholder="e.g. Implement SDN Flow Rule Caching">
+      <input class="form-input" id="taskTitle" placeholder="e.g. Implement Redis Query Caching for High-Volume Endpoints">
     </div>
     <div class="form-group mb16">
       <label class="form-label">Assign To Team Member *</label>
