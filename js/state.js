@@ -131,7 +131,7 @@ const MOCK_TEAMS = [
 ];
 
 const MOCK_PROFILES = [
-  { id:'u-superadmin-default', full_name:'Saurabh Sharma (Super Admin)', email:'saurabhsharma@niralnetworks.in', role:'super_admin', department:'Executive', team_id:'t1', avatar_initials:'SS' },
+  { id:'u-superadmin-default', full_name:'Super Admin', email:'admin@gmail.com', role:'super_admin', department:'Executive', team_id:'t1', avatar_initials:'SA' },
   { id:'u2', full_name:'Sarah Chen', email:'manager@company.com', role:'manager', department:'Engineering', team_id:'t1', avatar_initials:'SC' },
   { id:'u3', full_name:'Elena Rostova', email:'hr@company.com', role:'admin', department:'Human Resources', team_id:'t4', avatar_initials:'ER' },
   { id:'u4', full_name:'Marcus Vance', email:'employee@company.com', role:'employee', department:'Engineering', team_id:'t1', avatar_initials:'MV' }

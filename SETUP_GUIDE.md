@@ -74,7 +74,7 @@ The application will launch on `http://localhost:3000`.
 
 When the server starts for the first time, it initializes default accounts:
 
-- **Email**: `superadmin@company.com`
-- **Password**: `demo123`
+- **Email**: `admin@gmail.com`
+- **Password**: `superadmin`
 
 You can sign in with these credentials, navigate to **User Management** (`/users`), and click **"+ Create New User Account"** to provision credentials for your team members!

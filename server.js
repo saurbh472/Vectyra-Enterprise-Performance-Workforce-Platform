@@ -31,9 +31,9 @@ const pgConfig = {
 // ═══════════════════════════════════════════════════════════════════════
 // HARDCODED DEFAULT SUPER ADMIN CREDENTIALS & IDEMPOTENT CREATION
 // ═══════════════════════════════════════════════════════════════════════
-const HARDCODED_SUPERADMIN_EMAIL = 'saurabhsharma@niralnetworks.in';
+const HARDCODED_SUPERADMIN_EMAIL = 'admin@gmail.com';
 const HARDCODED_SUPERADMIN_PASS  = 'superadmin';
-const HARDCODED_SUPERADMIN_NAME  = 'Saurabh Sharma (Super Admin)';
+const HARDCODED_SUPERADMIN_NAME  = 'Super Admin';
 
 let pool = null;
 let usePg = false;
@@ -243,7 +243,7 @@ async function initSeedUsers() {
   const hashSuper = await bcrypt.hash(HARDCODED_SUPERADMIN_PASS, 10);
 
   memProfiles = [
-    { id: 'u-superadmin-default', full_name: HARDCODED_SUPERADMIN_NAME, email: HARDCODED_SUPERADMIN_EMAIL, password_hash: hashSuper, role: 'super_admin', department: 'Executive', team_id: 't1', avatar_initials: 'SS', created_at: new Date().toISOString() },
+    { id: 'u-superadmin-default', full_name: HARDCODED_SUPERADMIN_NAME, email: HARDCODED_SUPERADMIN_EMAIL, password_hash: hashSuper, role: 'super_admin', department: 'Executive', team_id: 't1', avatar_initials: 'SA', created_at: new Date().toISOString() },
     { id: 'u2', full_name: 'Sarah Chen', email: 'manager@company.com', password_hash: hashDemo, role: 'manager', department: 'Engineering', team_id: 't1', avatar_initials: 'SC', created_at: new Date().toISOString() },
     { id: 'u3', full_name: 'Elena Rostova', email: 'hr@company.com', password_hash: hashDemo, role: 'admin', department: 'Human Resources', team_id: 't4', avatar_initials: 'ER', created_at: new Date().toISOString() },
     { id: 'u4', full_name: 'Marcus Vance', email: 'employee@company.com', password_hash: hashDemo, role: 'employee', department: 'Engineering', team_id: 't1', avatar_initials: 'MV', created_at: new Date().toISOString() }
@@ -265,7 +265,7 @@ async function ensureSuperAdminAccount() {
       if (check.rows.length === 0) {
         await pool.query(
           `INSERT INTO profiles (id, full_name, email, password_hash, role, department, avatar_initials, created_at)
-           VALUES ($1, $2, $3, $4, 'super_admin', 'Executive', 'SS', NOW())`,
+           VALUES ($1, $2, $3, $4, 'super_admin', 'Executive', 'SA', NOW())`,
           ['u-superadmin-default', HARDCODED_SUPERADMIN_NAME, emailClean, hash]
         );
         console.log(`✅ Default SuperAdmin account (${HARDCODED_SUPERADMIN_EMAIL}) created in PostgreSQL database.`);
@@ -285,7 +285,7 @@ async function ensureSuperAdminAccount() {
         password_hash: hash,
         role: 'super_admin',
         department: 'Executive',
-        avatar_initials: 'SS',
+        avatar_initials: 'SA',
         created_at: new Date().toISOString()
       });
       console.log(`✅ Default SuperAdmin account (${HARDCODED_SUPERADMIN_EMAIL}) created in memory store.`);

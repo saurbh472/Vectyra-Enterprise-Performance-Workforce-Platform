@@ -105,7 +105,7 @@ npm run dev
 
 ## 🔑 Default Super Admin Credentials
 
-* **Email:** `saurabhsharma@niralnetworks.in`
+* **Email:** `admin@gmail.com`
 * **Password:** `superadmin`
 
 ---
