@@ -1,0 +1,74 @@
+# ═══════════════════════════════════════════════════════════════════════
+# VECTYRA — DOCKER COMPOSE CONFIGURATION
+#
+# Architecture:
+# - app: Unified single container serving Frontend (SPA) + Backend (Node/Express API)
+# - postgres: Dedicated PostgreSQL database with automated schema & seed initialization
+#
+# Network Accessibility:
+# Binds to ${BIND_IP:-0.0.0.0}:${APP_PORT:-3000}, making it accessible across
+# your VM's network, intranet, or public IP.
+# ═══════════════════════════════════════════════════════════════════════
+
+services:
+  # ─── UNIFIED FRONTEND + BACKEND CONTAINER ───
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vectyra-portal:latest
+    container_name: vectyra-app
+    restart: unless-stopped
+    ports:
+      # Binds to 0.0.0.0 by default to allow incoming connections from any machine on the network
+      - "${BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-vectyra_super_secret_jwt_key_2026}
+      # PostgreSQL database connection configuration
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=${DB_USER:-postgres}
+      - PGPASSWORD=${DB_PASSWORD:-postgres}
+      - PGDATABASE=${DB_NAME:-vectyra}
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-vectyra}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vectyra-network
+
+  # ─── POSTGRESQL DATABASE CONTAINER ───
+  postgres:
+    image: postgres:16-alpine
+    container_name: vectyra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-vectyra}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      # Localhost binding for DB security (change to 0.0.0.0 or remove if not needed externally)
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-vectyra}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - vectyra-network
+
+volumes:
+  pgdata:
+    name: vectyra_pgdata
+
+networks:
+  vectyra-network:
+    name: vectyra_net
+    driver: bridge

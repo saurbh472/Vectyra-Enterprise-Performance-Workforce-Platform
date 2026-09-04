@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.local
+.agents
+.vscode
+.idea
+desktop.ini
+SETUP_GUIDE.md
+DOCKER_GUIDE.md

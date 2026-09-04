@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vectyra — Employee Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #16161d;
+    --surface2: #1e1e28;
+    --border: #2a2a38;
+    --accent: #7c6af5;
+    --accent2: #f5a66a;
+    --accent3: #6af5c4;
+    --accent4: #f56a8a;
+    --text: #e8e8f0;
+    --text2: #9090aa;
+    --text3: #5a5a72;
+    --success: #6af5c4;
+    --warning: #f5a66a;
+    --danger: #f56a8a;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* NOISE TEXTURE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    padding: 0;
+  }
+
+  .logo {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .logo-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-left: 3px;
+    vertical-align: middle;
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.85); }
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .nav {
+    flex: 1;
+    padding: 16px 12px;
+    overflow-y: auto;
+  }
+
+  .nav-section {
+    margin-bottom: 24px;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+
+  .nav-item.active {
+    background: rgba(124, 106, 245, 0.12);
+    color: var(--accent);
+    border-color: rgba(124, 106, 245, 0.2);
+    font-weight: 500;
+  }
+
+  .nav-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .sidebar-bottom {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--surface2);
+  }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .user-info .user-name { font-size: 13px; font-weight: 500; }
+  .user-info .user-role { font-size: 11px; color: var(--text3); }
+
+  /* MAIN */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+  }
+
+  .header {
+    padding: 28px 40px 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .page-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--text);
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .page-sub {
+    color: var(--text2);
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #6a58e0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(124,106,245,0.4);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+  .btn-danger {
+    background: rgba(245, 106, 138, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(245,106,138,0.3);
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+
+  .content { padding: 28px 40px 60px; }
+
+  /* PAGE SECTIONS */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* DASHBOARD */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: rgba(124,106,245,0.3); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--accent));
+  }
+
+  .stat-label { font-size: 12px; color: var(--text3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 38px; color: var(--text); letter-spacing: -1px; line-height: 1; }
+  .stat-change { font-size: 12px; color: var(--text2); margin-top: 6px; }
+  .stat-change span { color: var(--success); font-weight: 500; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title { font-size: 14px; font-weight: 600; }
+  .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .card-body { padding: 20px; }
+
+  /* ACTIVITY FEED */
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .activity-item:last-child { border-bottom: none; }
+
+  .activity-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .activity-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .activity-text strong { color: var(--text); font-weight: 500; }
+  .activity-time { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* FORM TYPE CARDS */
+  .form-types-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .form-type-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .form-type-card:hover {
+    border-color: var(--card-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+
+  .form-type-card.selected {
+    border-color: var(--card-accent);
+    background: rgba(124,106,245,0.05);
+  }
+
+  .form-type-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+    transform-origin: left;
+  }
+
+  .form-type-card:hover::after,
+  .form-type-card.selected::after { transform: scaleX(1); }
+
+  .form-type-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+
+  .form-type-name {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .form-type-desc {
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.6;
+  }
+
+  /* FEEDBACK FORM */
+  .form-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .form-header {
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(124,106,245,0.06), transparent);
+  }
+
+  .form-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+
+  .form-body { padding: 28px; }
+
+  .form-section-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 16px;
+    margin-top: 28px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-section-title:first-child { margin-top: 0; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-row.single { grid-template-columns: 1fr; }
+
+  .form-group { margin-bottom: 18px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 7px;
+    letter-spacing: 0.3px;
+  }
+
+  .form-label .required { color: var(--danger); margin-left: 3px; }
+
+  input[type="text"],
+  input[type="email"],
+  select,
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,106,245,0.1);
+  }
+
+  textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+  select option { background: var(--surface); }
+
+  /* RATING STARS */
+  .rating-group { margin-bottom: 18px; }
+
+  .rating-label {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  .rating-label .sublabel { font-size: 11px; color: var(--text3); display: block; margin-top: 2px; }
+
+  .stars {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .star {
+    font-size: 22px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    color: var(--border);
+    user-select: none;
+  }
+
+  .star:hover, .star.active { color: var(--accent2); transform: scale(1.1); }
+
+  .rating-scale {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .scale-btn {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text2);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scale-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .scale-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* RADIO GROUP */
+  .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text2);
+    transition: all 0.15s;
+    background: var(--bg);
+  }
+
+  .radio-option:hover { border-color: var(--accent); color: var(--text); }
+  .radio-option.selected { border-color: var(--accent); color: var(--accent); background: rgba(124,106,245,0.08); }
+  .radio-option input { display: none; }
+
+  /* CHECKBOX */
+  .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+
+  .checkbox-option:hover { border-color: var(--accent); color: var(--text); }
+
+  .checkbox-option input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar-wrap { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; margin: 4px 0 10px; }
+  .progress-bar { height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.5s ease; }
+
+  /* FORM FOOTER */
+  .form-footer {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,0,0,0.2);
+  }
+
+  .form-progress { font-size: 12px; color: var(--text3); }
+
+  /* RESPONSES TABLE */
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 13px 16px;
+    border-bottom: 1px solid rgba(42,42,56,0.5);
+    color: var(--text2);
+    vertical-align: top;
+  }
+
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge-manager { background: rgba(124,106,245,0.15); color: #a08ef0; }
+  .badge-peer { background: rgba(106,245,196,0.15); color: #6af5c4; }
+  .badge-hr { background: rgba(245,166,106,0.15); color: #f5a66a; }
+  .badge-self { background: rgba(245,106,138,0.15); color: #f56a8a; }
+  .badge-360 { background: rgba(106,196,245,0.15); color: #6ac4f5; }
+  .badge-exit { background: rgba(245,245,106,0.15); color: #e0e06a; }
+
+  /* SCORE BAR */
+  .score-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .score-fill {
+    height: 5px;
+    border-radius: 3px;
+    background: var(--accent);
+    min-width: 4px;
+  }
+
+  .score-num { font-size: 12px; color: var(--text2); width: 28px; }
+
+  /* ANALYTICS */
+  .chart-container { position: relative; height: 180px; }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 160px;
+    padding-bottom: 24px;
+    position: relative;
+  }
+
+  .bar-chart::after {
+    content: '';
+    position: absolute;
+    bottom: 24px; left: 0; right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+  .bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    transition: height 0.6s ease;
+    position: relative;
+  }
+
+  .bar:hover::after {
+    content: attr(data-val);
+    position: absolute;
+    top: -22px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .bar-label { font-size: 10px; color: var(--text3); margin-top: 6px; text-align: center; }
+
+  .donut-wrap { display: flex; align-items: center; gap: 20px; }
+
+  .donut-svg { flex-shrink: 0; }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .legend-val { margin-left: auto; color: var(--text); font-weight: 500; }
+
+  /* TOAST */
+  .toast-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    max-width: 320px;
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(110%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(110%); opacity: 0; }
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px;
+    transition: color 0.15s;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body { padding: 24px; }
+
+  .detail-row {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-row:last-child { border-bottom: none; }
+
+  .detail-key { font-size: 12px; color: var(--text3); width: 160px; flex-shrink: 0; padding-top: 1px; }
+  .detail-val { font-size: 13px; color: var(--text); flex: 1; line-height: 1.6; }
+
+  /* SENTIMENT METER */
+  .sentiment-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .sentiment-bar {
+    height: 8px;
+    border-radius: 4px;
+    flex: 1;
+    background: linear-gradient(to right, var(--danger), var(--warning), var(--success));
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sentiment-indicator {
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.2);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transition: left 0.5s ease;
+  }
+
+  /* TREND */
+  .trend-up { color: var(--success); }
+  .trend-down { color: var(--danger); }
+  .trend-flat { color: var(--text3); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+  .empty-title { font-size: 16px; font-weight: 500; color: var(--text2); margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; color: var(--text3); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* NPS CHART */
+  .nps-bar {
+    display: flex;
+    height: 36px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+
+  .nps-segment { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.9); transition: flex 0.5s ease; }
+
+  /* HEATMAP */
+  .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .heatmap-cell:hover { transform: scale(1.2); }
+
+  /* TAGS */
+  .tag {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 2px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  /* COMPLETION RING */
+  .completion-ring { position: relative; width: 64px; height: 64px; }
+  .completion-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .stats-grid, .three-col { grid-template-columns: 1fr 1fr; }
+    .two-col, .form-types-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-text">Vectyra<span class="logo-dot"></span></div>
+    <div class="logo-sub">Employee Feedback</div>
+  </div>
+
+  <div class="nav">
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('analytics', this)">
+        <span class="nav-icon">📈</span> Analytics
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Feedback Forms</div>
+      <div class="nav-item" onclick="showPage('submit', this)">
+        <span class="nav-icon">✏️</span> Submit Feedback
+      </div>
+      <div class="nav-item" onclick="showPage('responses', this)">
+        <span class="nav-icon">📋</span> All Responses
+        <span class="nav-badge" id="respCount">0</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Reviews</div>
+      <div class="nav-item" onclick="showPage('self', this)">
+        <span class="nav-icon">🪞</span> Self Review
+      </div>
+      <div class="nav-item" onclick="showPage('360', this)">
+        <span class="nav-icon">🔄</span> 360° Review
+      </div>
+      <div class="nav-item" onclick="showPage('exit', this)">
+        <span class="nav-icon">🚪</span> Exit Interview
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="avatar">JD</div>
+      <div class="user-info">
+        <div class="user-name">Jamie Doe</div>
+        <div class="user-role">HR Manager</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" id="modalContent">
+    <div class="modal-header">
+      <div>
+        <div class="card-title" id="modalTitle">Response Details</div>
+        <div class="card-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('modal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<main class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="page active" id="page-dashboard">
+  <div class="header">
+    <div>
+      <div class="page-title">Good morning, Jamie</div>
+      <div class="page-sub">Here's what's happening with employee feedback</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-primary" onclick="showPage('submit', document.querySelector('.nav-item:nth-child(1)'))">+ New Feedback</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card" style="--card-color: #7c6af5">
+        <div class="stat-label">Total Responses</div>
+        <div class="stat-value" id="totalCount">0</div>
+        <div class="stat-change"><span>↑ 12%</span> from last month</div>
+      </div>
+      <div class="stat-card" style="--card-color: #6af5c4">
+        <div class="stat-label">Avg Score</div>
+        <div class="stat-value" id="avgScore">—</div>
+        <div class="stat-change"><span>↑ 0.3</span> from last cycle</div>
+      </div>
+      <div class="stat-card" style="--card-color: #f5a66a">
+        <div class="stat-label">This Week</div>
+        <div class="stat-value" id="weekCount">0</div>
+        <div class="stat-change">responses collected</div>
+      </div>
+      <div class="stat-card" style="--card-color: #f56a8a">
+        <div class="stat-label">Pending Reviews</div>
+        <div class="stat-value" id="pendingCount">3</div>
+        <div class="stat-change">action required</div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-bottom: 20px;">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Feedback by Type</div>
+            <div class="card-sub">Distribution this quarter</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="donut-wrap">
+            <svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100" id="donutChart">
+              <circle cx="50" cy="50" r="35" fill="none" stroke="#2a2a38" stroke-width="18"/>
+              <!-- Dynamic arcs added by JS -->
+            </svg>
+            <div style="flex:1" id="legendItems"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">NPS Score</div>
+            <div class="card-sub">Employee Net Promoter Score</div>
+          </div>
+          <div style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--accent)" id="npsScore">—</div>
+        </div>
+        <div class="card-body">
+          <div class="nps-bar" id="npsBar">
+            <div class="nps-segment" style="flex:2;background:#f56a8a">Detractors</div>
+            <div class="nps-segment" style="flex:3;background:#f5a66a">Passives</div>
+            <div class="nps-segment" style="flex:4;background:#6af5c4">Promoters</div>
+          </div>
+          <div class="scale-labels">
+            <span>0-6 (Detractors)</span>
+            <span>7-8 (Passives)</span>
+            <span>9-10 (Promoters)</span>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Sentiment trend</div>
+            <div class="sentiment-wrap">
+              <span style="font-size:11px;color:var(--danger)">😞</span>
+              <div class="sentiment-bar">
+                <div class="sentiment-indicator" id="sentimentIndicator" style="left:60%"></div>
+              </div>
+              <span style="font-size:11px;color:var(--success)">😊</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Monthly Submissions</div>
+            <div class="card-sub">Last 7 months</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="bar-chart" id="barChart">
+            <!-- Bars added by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Recent Activity</div>
+          </div>
+        </div>
+        <div class="card-body" id="activityFeed">
+          <div class="empty-state" style="padding:20px">
+            <div class="empty-icon">💤</div>
+            <div class="empty-sub">No activity yet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUBMIT FEEDBACK ===== -->
+<div class="page" id="page-submit">
+  <div class="header">
+    <div>
+      <div class="page-title">Submit Feedback</div>
+      <div class="page-sub">Choose a form type and share your thoughts</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="form-types-grid" id="formTypeGrid">
+      <div class="form-type-card" style="--card-accent:#7c6af5" onclick="selectFormType('manager', this)">
+        <div class="form-type-icon">👔</div>
+        <div class="form-type-name">Manager Feedback</div>
+        <div class="form-type-desc">Evaluate leadership quality, communication, and support from your direct manager</div>
+      </div>
+      <div class="form-type-card" style="--card-accent:#6af5c4" onclick="selectFormType('peer', this)">
+        <div class="form-type-icon">🤝</div>
+        <div class="form-type-name">Peer Review</div>
+        <div class="form-type-desc">Provide constructive feedback on a colleague's collaboration and performance</div>
+      </div>
+      <div class="form-type-card" style="--card-accent:#f5a66a" onclick="selectFormType('hr', this)">
+        <div class="form-type-icon">🏢</div>
+        <div class="form-type-name">HR Feedback</div>
+        <div class="form-type-desc">Share feedback on HR processes, company culture, and organizational health</div>
+      </div>
+    </div>
+
+    <div id="formArea"></div>
+  </div>
+</div>
+
+<!-- ===== RESPONSES ===== -->
+<div class="page" id="page-responses">
+  <div class="header">
+    <div>
+      <div class="page-title">All Responses</div>
+      <div class="page-sub">Browse and filter submitted feedback</div>
+    </div>
+    <div class="header-actions">
+      <select id="filterType" onchange="renderTable()" style="width:160px">
+        <option value="">All Types</option>
+        <option value="manager">Manager</option>
+        <option value="peer">Peer</option>
+        <option value="hr">HR</option>
+        <option value="self">Self Review</option>
+        <option value="360">360°</option>
+        <option value="exit">Exit</option>
+      </select>
+      <button class="btn btn-ghost" onclick="clearAllData()">🗑 Clear All</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Type</th>
+              <th>Submitted By</th>
+              <th>Subject</th>
+              <th>Score</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="responseTable">
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No responses yet</div><div class="empty-sub">Submit some feedback to see it here</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ANALYTICS ===== -->
+<div class="page" id="page-analytics">
+  <div class="header">
+    <div>
+      <div class="page-title">Analytics</div>
+      <div class="page-sub">Deep insights into employee sentiment and engagement</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="three-col" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Avg Score by Type</div></div>
+        <div class="card-body" id="avgByType">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Top Keywords</div></div>
+        <div class="card-body" id="keywordsCloud">
+          <div class="empty-sub" style="font-size:13px;color:var(--text3)">Submit feedback to see keyword analysis</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Submission Heatmap</div></div>
+        <div class="card-body">
+          <div class="heatmap" id="heatmapGrid"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px">Last 28 days activity</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Score Distribution</div></div>
+        <div class="card-body">
+          <div class="bar-chart" id="distChart" style="height:120px"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Sentiment Summary</div></div>
+        <div class="card-body" id="sentimentSummary">
+          <div class="empty-sub" style="font-size:13px;color:var(--text3)">Submit feedback to see sentiment data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SELF REVIEW ===== -->
+<div class="page" id="page-self">
+  <div class="header">
+    <div>
+      <div class="page-title">Self Review</div>
+      <div class="page-sub">Reflect on your own performance and growth</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="form-container">
+      <div class="form-header">
+        <div class="form-title">🪞 Self Performance Review</div>
+        <div class="page-sub">Take time to reflect on your contributions, growth areas, and goals</div>
+      </div>
+      <div class="form-body" id="selfFormBody">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="form-footer">
+        <div class="form-progress">Self Review • Confidential</div>
+        <button class="btn btn-primary" onclick="submitSelfReview()">Submit Self Review</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 360 REVIEW ===== -->
+<div class="page" id="page-360">
+  <div class="header">
+    <div>
+      <div class="page-title">360° Review</div>
+      <div class="page-sub">Holistic feedback from all directions</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="form-container">
+      <div class="form-header">
+        <div class="form-title">🔄 360° Performance Review</div>
+        <div class="page-sub">Comprehensive evaluation covering all aspects of performance</div>
+      </div>
+      <div class="form-body" id="review360Body">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="form-footer">
+        <div class="form-progress">360° Review • Multi-rater</div>
+        <button class="btn btn-primary" onclick="submit360Review()">Submit 360° Review</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EXIT INTERVIEW ===== -->
+<div class="page" id="page-exit">
+  <div class="header">
+    <div>
+      <div class="page-title">Exit Interview</div>
+      <div class="page-sub">Help us understand your experience and improve</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="form-container">
+      <div class="form-header" style="background:linear-gradient(135deg,rgba(245,106,138,0.08),transparent)">
+        <div class="form-title">🚪 Exit Interview Form</div>
+        <div class="page-sub">Your honest feedback helps us build a better workplace</div>
+      </div>
+      <div class="form-body" id="exitFormBody">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="form-footer">
+        <div class="form-progress">Exit Interview • Confidential</div>
+        <button class="btn btn-primary" onclick="submitExitInterview()">Submit Exit Interview</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ========================
+// DATA STORAGE (localStorage)
+// ========================
+const DB_KEY = 'vectyra_feedback';
+
+function getDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveDB(data) {
+  localStorage.setItem(DB_KEY, JSON.stringify(data));
+}
+
+function addRecord(record) {
+  const db = getDB();
+  record.id = Date.now();
+  record.createdAt = new Date().toISOString();
+  db.unshift(record);
+  saveDB(db);
+  updateBadge();
+  return record;
+}
+
+// ========================
+// NAVIGATION
+// ========================
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+
+  // Page-specific init
+  if (id === 'dashboard') refreshDashboard();
+  if (id === 'responses') renderTable();
+  if (id === 'analytics') renderAnalytics();
+  if (id === 'self') renderSelfForm();
+  if (id === '360') render360Form();
+  if (id === 'exit') renderExitForm();
+}
+
+function updateBadge() {
+  const count = getDB().length;
+  document.getElementById('respCount').textContent = count;
+  document.getElementById('totalCount').textContent = count;
+}
+
+// ========================
+// FORM TYPE SELECTION
+// ========================
+let currentFormType = null;
+
+function selectFormType(type, el) {
+  currentFormType = type;
+  document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('formArea').innerHTML = buildFeedbackForm(type);
+  initRatings();
+  document.getElementById('formArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ========================
+// FORM BUILDERS
+// ========================
+function buildFeedbackForm(type) {
+  const forms = {
+    manager: buildManagerForm(),
+    peer: buildPeerForm(),
+    hr: buildHRForm()
+  };
+  return forms[type] || '';
+}
+
+function buildManagerForm() {
+  return `
+  <div class="form-container">
+    <div class="form-header" style="background:linear-gradient(135deg,rgba(124,106,245,0.06),transparent)">
+      <div class="form-title">👔 Manager Feedback Form</div>
+      <div class="page-sub">Evaluate your direct manager's performance and leadership</div>
+    </div>
+    <div class="form-body">
+      <div class="form-section-title">Basic Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Your Name <span class="required">*</span></label>
+          <input type="text" id="mf_yourName" placeholder="Jamie Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Manager's Name <span class="required">*</span></label>
+          <input type="text" id="mf_managerName" placeholder="Alex Smith">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <select id="mf_dept">
+            <option value="">Select department</option>
+            <option>Engineering</option><option>Product</option>
+            <option>Design</option><option>Marketing</option>
+            <option>Sales</option><option>HR</option><option>Finance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Review Period</label>
+          <select id="mf_period">
+            <option>Q1 2025</option><option>Q2 2025</option>
+            <option>Q3 2025</option><option>Q4 2025</option>
+            <option>Annual 2025</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-title">Performance Ratings</div>
+      ${buildRatingGroup('mf_r1', 'Communication Skills', 'Clarity, openness, and frequency of communication')}
+      ${buildRatingGroup('mf_r2', 'Leadership & Direction', 'Vision, goal-setting, and team guidance')}
+      ${buildRatingGroup('mf_r3', 'Support & Mentorship', 'Career development support and coaching')}
+      ${buildRatingGroup('mf_r4', 'Recognition & Fairness', 'Acknowledges contributions and treats team equitably')}
+      ${buildRatingGroup('mf_r5', 'Problem-Solving', 'Handles challenges and removes blockers effectively')}
+
+      <div class="form-section-title">Qualitative Feedback</div>
+      <div class="form-group form-row single">
+        <div>
+          <label class="form-label">What does your manager do exceptionally well?</label>
+          <textarea id="mf_strengths" placeholder="Share specific examples of positive behaviors…"></textarea>
+        </div>
+      </div>
+      <div class="form-group form-row single">
+        <div>
+          <label class="form-label">What could your manager improve on?</label>
+          <textarea id="mf_improve" placeholder="Constructive, specific suggestions are most helpful…"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section-title">Overall Assessment</div>
+      <div class="form-group">
+        <label class="form-label">How likely are you to recommend this manager to others?</label>
+        ${buildNPSScale('mf_nps')}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Is this feedback anonymous?</label>
+        <div class="radio-group">
+          <label class="radio-option selected" onclick="selectRadio(this)"><input type="radio" name="mf_anon" value="yes" checked>🔒 Anonymous</label>
+          <label class="radio-option" onclick="selectRadio(this)"><input type="radio" name="mf_anon" value="no">👤 Not Anonymous</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-footer">
+      <div class="form-progress">Manager Feedback • Confidential</div>
+      <button class="btn btn-primary" onclick="submitManagerFeedback()">Submit Feedback</button>
+    </div>
+  </div>`;
+}
+
+function buildPeerForm() {
+  return `
+  <div class="form-container">
+    <div class="form-header" style="background:linear-gradient(135deg,rgba(106,245,196,0.06),transparent)">
+      <div class="form-title">🤝 Peer Review Form</div>
+      <div class="page-sub">Provide structured feedback on a colleague's performance</div>
+    </div>
+    <div class="form-body">
+      <div class="form-section-title">Basic Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Your Name <span class="required">*</span></label>
+          <input type="text" id="pf_yourName" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Colleague Being Reviewed <span class="required">*</span></label>
+          <input type="text" id="pf_peerName" placeholder="Colleague's name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Relationship</label>
+          <select id="pf_relation">
+            <option>Direct Team Member</option><option>Cross-Functional Collaborator</option>
+            <option>Project Partner</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Working Together Since</label>
+          <select id="pf_duration">
+            <option>Less than 3 months</option><option>3–6 months</option>
+            <option>6–12 months</option><option>Over 1 year</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-title">Competency Ratings</div>
+      ${buildRatingGroup('pf_r1', 'Collaboration', 'Works well with others, contributes to team success')}
+      ${buildRatingGroup('pf_r2', 'Communication', 'Clear, timely, and professional communication')}
+      ${buildRatingGroup('pf_r3', 'Reliability', 'Meets deadlines, follows through on commitments')}
+      ${buildRatingGroup('pf_r4', 'Technical Skills', 'Domain knowledge and quality of work output')}
+      ${buildRatingGroup('pf_r5', 'Positive Impact', 'Lifts team morale, brings energy and ideas')}
+
+      <div class="form-section-title">Strengths & Development</div>
+      <div class="form-group form-row single">
+        <div>
+          <label class="form-label">What are this person's greatest strengths?</label>
+          <textarea id="pf_strengths" placeholder="Be specific and use examples…"></textarea>
+        </div>
+      </div>
+      <div class="form-group form-row single">
+        <div>
+          <label class="form-label">What one thing could they do differently to be more effective?</label>
+          <textarea id="pf_growth" placeholder="Frame as actionable suggestions…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="form-footer">
+      <div class="form-progress">Peer Review • Confidential</div>
+      <button class="btn btn-primary" onclick="submitPeerFeedback()">Submit Peer Review</button>
+    </div>
+  </div>`;
+}
+
+function buildHRForm() {
+  return `
+  <div class="form-container">
+    <div class="form-header" style="background:linear-gradient(135deg,rgba(245,166,106,0.06),transparent)">
+      <div class="form-title">🏢 HR & Culture Feedback</div>
+      <div class="page-sub">Help us build a better workplace for everyone</div>
+    </div>
+    <div class="form-body">
+      <div class="form-section-title">Basic Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name (optional)</label>
+          <input type="text" id="hf_name" placeholder="Leave blank to stay anonymous">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tenure</label>
+          <select id="hf_tenure">
+            <option>Less than 6 months</option><option>6–12 months</option>
+            <option>1–2 years</option><option>2–5 years</option><option>5+ years</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-title">Company Culture Ratings</div>
+      ${buildRatingGroup('hf_r1', 'Work-Life Balance', 'Ability to maintain a healthy balance')}
+      ${buildRatingGroup('hf_r2', 'Inclusion & Diversity', 'Everyone feels welcomed and valued')}
+      ${buildRatingGroup('hf_r3', 'Career Growth', 'Opportunities for advancement and learning')}
+      ${buildRatingGroup('hf_r4', 'Compensation & Benefits', 'Fair pay and good benefits package')}
+      ${buildRatingGroup('hf_r5', 'HR Responsiveness', 'HR team is accessible and helpful')}
+
+      <div class="form-section-title">Specific Feedback Areas</div>
+      <div class="form-group">
+        <label class="form-label">What aspects of our culture do you value most?</label>
+        <div class="checkbox-grid" id="hf_culture">
+          ${['Transparency','Collaboration','Innovation','Flexibility','Recognition','Learning','Work-Life Balance','Inclusion'].map(v =>
+            `<label class="checkbox-option"><input type="checkbox" value="${v}"> ${v}</label>`).join('')}
+        </div>
+      </div>
+      <div class="form-group form-row single" style="margin-top:16px">
+        <div>
+          <label class="form-label">What should we change or improve?</label>
+          <textarea id="hf_change" placeholder="Be honest — this feedback is confidential and directly informs decisions…"></textarea>
+        </div>
+      </div>
+      <div class="form-group form-row single">
+        <div>
+          <label class="form-label">Anything else you'd like HR to know?</label>
+          <textarea id="hf_other" placeholder="Open comments…"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section-title">Overall</div>
+      <div class="form-group">
+        <label class="form-label">How satisfied are you working here overall?</label>
+        ${buildNPSScale('hf_nps')}
+      </div>
+    </div>
+    <div class="form-footer">
+      <div class="form-progress">HR Feedback • Confidential</div>
+      <button class="btn btn-primary" onclick="submitHRFeedback()">Submit HR Feedback</button>
+    </div>
+  </div>`;
+}
+
+function buildRatingGroup(id, label, sublabel) {
+  return `
+  <div class="rating-group">
+    <div class="rating-label">${label} <span class="sublabel">${sublabel}</span></div>
+    <div class="stars" id="${id}">
+      <span class="star" data-val="1" onclick="setStars('${id}', 1)">★</span>
+      <span class="star" data-val="2" onclick="setStars('${id}', 2)">★</span>
+      <span class="star" data-val="3" onclick="setStars('${id}', 3)">★</span>
+      <span class="star" data-val="4" onclick="setStars('${id}', 4)">★</span>
+      <span class="star" data-val="5" onclick="setStars('${id}', 5)">★</span>
+      <span style="font-size:12px;color:var(--text3);margin-left:8px" id="${id}_val">Not rated</span>
+    </div>
+  </div>`;
+}
+
+function buildNPSScale(id) {
+  const btns = Array.from({length:11}, (_,i) =>
+    `<button class="scale-btn" data-val="${i}" onclick="setScale('${id}', ${i})">${i}</button>`
+  ).join('');
+  return `
+  <div>
+    <div class="rating-scale" id="${id}">${btns}</div>
+    <div class="scale-labels"><span>Not at all</span><span>Neutral</span><span>Extremely likely</span></div>
+  </div>`;
+}
+
+function setStars(id, val) {
+  const container = document.getElementById(id);
+  if (!container) return;
+  container.querySelectorAll('.star').forEach((s, i) => {
+    s.classList.toggle('active', i < val);
+  });
+  container.setAttribute('data-val', val);
+  const labels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+  const lbl = document.getElementById(id + '_val');
+  if (lbl) lbl.textContent = labels[val] || '';
+}
+
+function setScale(id, val) {
+  const container = document.getElementById(id);
+  if (!container) return;
+  container.querySelectorAll('.scale-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.getAttribute('data-val')) === val);
+  });
+  container.setAttribute('data-val', val);
+}
+
+function selectRadio(label) {
+  const name = label.querySelector('input').name;
+  document.querySelectorAll(`[name="${name}"]`).forEach(inp => {
+    inp.closest('.radio-option').classList.remove('selected');
+  });
+  label.classList.add('selected');
+}
+
+function initRatings() {}
+
+function getStarVal(id) {
+  const el = document.getElementById(id);
+  return el ? parseInt(el.getAttribute('data-val')) || 0 : 0;
+}
+
+function getScaleVal(id) {
+  const el = document.getElementById(id);
+  return el ? parseInt(el.getAttribute('data-val') ?? '-1') : -1;
+}
+
+function avgRatings(ids) {
+  const vals = ids.map(id => getStarVal(id)).filter(v => v > 0);
+  if (!vals.length) return 0;
+  return vals.reduce((a,b) => a+b, 0) / vals.length;
+}
+
+// ========================
+// FORM SUBMISSIONS
+// ========================
+function getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function submitManagerFeedback() {
+  const name = getVal('mf_yourName');
+  const manager = getVal('mf_managerName');
+  if (!name || !manager) { toast('Please fill in required fields', 'warn'); return; }
+
+  const score = avgRatings(['mf_r1','mf_r2','mf_r3','mf_r4','mf_r5']);
+  const record = {
+    type: 'manager',
+    submittedBy: name,
+    subject: manager,
+    department: getVal('mf_dept'),
+    period: getVal('mf_period'),
+    ratings: {
+      communication: getStarVal('mf_r1'),
+      leadership: getStarVal('mf_r2'),
+      support: getStarVal('mf_r3'),
+      recognition: getStarVal('mf_r4'),
+      problemSolving: getStarVal('mf_r5'),
+    },
+    strengths: getVal('mf_strengths'),
+    improvements: getVal('mf_improve'),
+    nps: getScaleVal('mf_nps'),
+    score: Math.round(score * 10) / 10,
+    anonymous: document.querySelector('[name="mf_anon"]:checked')?.value === 'yes'
+  };
+  addRecord(record);
+  toast('✅ Manager feedback submitted!', 'success');
+  document.getElementById('formArea').innerHTML = buildSuccessBanner();
+  currentFormType = null;
+  document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('selected'));
+}
+
+function submitPeerFeedback() {
+  const name = getVal('pf_yourName');
+  const peer = getVal('pf_peerName');
+  if (!name || !peer) { toast('Please fill in required fields', 'warn'); return; }
+
+  const score = avgRatings(['pf_r1','pf_r2','pf_r3','pf_r4','pf_r5']);
+  const record = {
+    type: 'peer',
+    submittedBy: name,
+    subject: peer,
+    relationship: getVal('pf_relation'),
+    duration: getVal('pf_duration'),
+    ratings: {
+      collaboration: getStarVal('pf_r1'),
+      communication: getStarVal('pf_r2'),
+      reliability: getStarVal('pf_r3'),
+      technical: getStarVal('pf_r4'),
+      impact: getStarVal('pf_r5'),
+    },
+    strengths: getVal('pf_strengths'),
+    growth: getVal('pf_growth'),
+    score: Math.round(score * 10) / 10
+  };
+  addRecord(record);
+  toast('✅ Peer review submitted!', 'success');
+  document.getElementById('formArea').innerHTML = buildSuccessBanner();
+  currentFormType = null;
+  document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('selected'));
+}
+
+function submitHRFeedback() {
+  const score = avgRatings(['hf_r1','hf_r2','hf_r3','hf_r4','hf_r5']);
+  const checked = [...document.querySelectorAll('#hf_culture input:checked')].map(c => c.value);
+  const record = {
+    type: 'hr',
+    submittedBy: getVal('hf_name') || 'Anonymous',
+    subject: 'HR & Culture',
+    tenure: getVal('hf_tenure'),
+    ratings: {
+      workLifeBalance: getStarVal('hf_r1'),
+      inclusion: getStarVal('hf_r2'),
+      careerGrowth: getStarVal('hf_r3'),
+      compensation: getStarVal('hf_r4'),
+      hrResponsiveness: getStarVal('hf_r5'),
+    },
+    cultureValues: checked,
+    changes: getVal('hf_change'),
+    other: getVal('hf_other'),
+    nps: getScaleVal('hf_nps'),
+    score: Math.round(score * 10) / 10
+  };
+  addRecord(record);
+  toast('✅ HR feedback submitted!', 'success');
+  document.getElementById('formArea').innerHTML = buildSuccessBanner();
+  document.querySelectorAll('.form-type-card').forEach(c => c.classList.remove('selected'));
+}
+
+function buildSuccessBanner() {
+  return `
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:48px;text-align:center;margin-top:24px">
+    <div style="font-size:52px;margin-bottom:16px">🎉</div>
+    <div style="font-family:'DM Serif Display',serif;font-size:24px;margin-bottom:8px">Thank you!</div>
+    <div style="color:var(--text2);font-size:14px;margin-bottom:24px">Your feedback has been saved and will help improve the workplace.</div>
+    <button class="btn btn-primary" onclick="showPage('responses', null)">View All Responses →</button>
+  </div>`;
+}
+
+// ========================
+// SELF REVIEW FORM
+// ========================
+function renderSelfForm() {
+  document.getElementById('selfFormBody').innerHTML = `
+    <div class="form-section-title">Personal Information</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Your Name</label><input type="text" id="sr_name" placeholder="Your name"></div>
+      <div class="form-group"><label class="form-label">Role / Title</label><input type="text" id="sr_role" placeholder="Your current role"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Department</label><select id="sr_dept"><option>Engineering</option><option>Product</option><option>Design</option><option>Marketing</option><option>Sales</option><option>HR</option></select></div>
+      <div class="form-group"><label class="form-label">Review Period</label><select id="sr_period"><option>Q1 2025</option><option>Q2 2025</option><option>Q3 2025</option><option>Q4 2025</option><option>Annual 2025</option></select></div>
+    </div>
+
+    <div class="form-section-title">Self Ratings</div>
+    ${buildRatingGroup('sr_r1', 'Quality of Work', 'How would you rate the quality of your output?')}
+    ${buildRatingGroup('sr_r2', 'Meeting Goals & Deadlines', 'Did you achieve your set objectives?')}
+    ${buildRatingGroup('sr_r3', 'Collaboration', 'How well did you work with others?')}
+    ${buildRatingGroup('sr_r4', 'Initiative & Innovation', 'Did you go beyond your role and bring new ideas?')}
+    ${buildRatingGroup('sr_r5', 'Professional Growth', 'How much did you develop your skills this period?')}
+
+    <div class="form-section-title">Reflections</div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What were your biggest accomplishments this period?</label>
+      <textarea id="sr_wins" placeholder="List your top achievements with impact…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What challenges did you face and how did you handle them?</label>
+      <textarea id="sr_challenges" placeholder="Be honest about obstacles and lessons learned…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What are your development goals for next period?</label>
+      <textarea id="sr_goals" placeholder="Skills to build, areas to grow, career aspirations…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What support do you need from your manager?</label>
+      <textarea id="sr_support" placeholder="Resources, guidance, opportunities needed…"></textarea>
+    </div></div>`;
+}
+
+function submitSelfReview() {
+  const name = getVal('sr_name');
+  if (!name) { toast('Please enter your name', 'warn'); return; }
+  const score = avgRatings(['sr_r1','sr_r2','sr_r3','sr_r4','sr_r5']);
+  const record = {
+    type: 'self',
+    submittedBy: name,
+    subject: name + ' (Self)',
+    role: getVal('sr_role'),
+    department: getVal('sr_dept'),
+    period: getVal('sr_period'),
+    ratings: {
+      quality: getStarVal('sr_r1'),
+      goals: getStarVal('sr_r2'),
+      collaboration: getStarVal('sr_r3'),
+      initiative: getStarVal('sr_r4'),
+      growth: getStarVal('sr_r5'),
+    },
+    accomplishments: getVal('sr_wins'),
+    challenges: getVal('sr_challenges'),
+    devGoals: getVal('sr_goals'),
+    managerSupport: getVal('sr_support'),
+    score: Math.round(score * 10) / 10
+  };
+  addRecord(record);
+  toast('✅ Self review submitted!', 'success');
+  renderSelfForm();
+}
+
+// ========================
+// 360 REVIEW FORM
+// ========================
+function render360Form() {
+  document.getElementById('review360Body').innerHTML = `
+    <div class="form-section-title">Review Info</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Reviewer Name</label><input type="text" id="r360_reviewer" placeholder="Your name"></div>
+      <div class="form-group"><label class="form-label">Employee Being Reviewed</label><input type="text" id="r360_subject" placeholder="Employee name"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Your Relationship</label>
+        <select id="r360_rel"><option>Direct Report (upward review)</option><option>Peer</option><option>Manager (downward)</option><option>Cross-functional</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Department</label>
+        <select id="r360_dept"><option>Engineering</option><option>Product</option><option>Design</option><option>Marketing</option><option>Sales</option><option>HR</option></select>
+      </div>
+    </div>
+
+    <div class="form-section-title">Core Competencies</div>
+    ${buildRatingGroup('r360_r1', 'Strategic Thinking', 'Sets direction and thinks beyond immediate tasks')}
+    ${buildRatingGroup('r360_r2', 'Emotional Intelligence', 'Self-awareness, empathy, interpersonal skills')}
+    ${buildRatingGroup('r360_r3', 'Execution & Delivery', 'Gets things done reliably and at high quality')}
+    ${buildRatingGroup('r360_r4', 'Team Building', 'Creates a positive, inclusive team environment')}
+    ${buildRatingGroup('r360_r5', 'Adaptability', 'Handles change and ambiguity with grace')}
+    ${buildRatingGroup('r360_r6', 'Communication', 'Communicates clearly across audiences and levels')}
+
+    <div class="form-section-title">Open Feedback</div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">Start — What should this person start doing?</label>
+      <textarea id="r360_start" placeholder="New behaviors or actions that would be beneficial…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">Stop — What should this person stop doing?</label>
+      <textarea id="r360_stop" placeholder="Behaviors that may be limiting their effectiveness…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">Continue — What should this person keep doing?</label>
+      <textarea id="r360_continue" placeholder="Strengths worth continuing and amplifying…"></textarea>
+    </div></div>`;
+}
+
+function submit360Review() {
+  const reviewer = getVal('r360_reviewer');
+  const subject = getVal('r360_subject');
+  if (!reviewer || !subject) { toast('Please fill in required fields', 'warn'); return; }
+  const score = avgRatings(['r360_r1','r360_r2','r360_r3','r360_r4','r360_r5','r360_r6']);
+  const record = {
+    type: '360',
+    submittedBy: reviewer,
+    subject: subject,
+    relationship: getVal('r360_rel'),
+    department: getVal('r360_dept'),
+    ratings: {
+      strategic: getStarVal('r360_r1'),
+      ei: getStarVal('r360_r2'),
+      execution: getStarVal('r360_r3'),
+      teamBuilding: getStarVal('r360_r4'),
+      adaptability: getStarVal('r360_r5'),
+      communication: getStarVal('r360_r6'),
+    },
+    start: getVal('r360_start'),
+    stop: getVal('r360_stop'),
+    continue: getVal('r360_continue'),
+    score: Math.round(score * 10) / 10
+  };
+  addRecord(record);
+  toast('✅ 360° review submitted!', 'success');
+  render360Form();
+}
+
+// ========================
+// EXIT INTERVIEW FORM
+// ========================
+function renderExitForm() {
+  document.getElementById('exitFormBody').innerHTML = `
+    <div class="form-section-title">Departing Employee Info</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Your Name (optional)</label><input type="text" id="ex_name" placeholder="Leave blank to stay anonymous"></div>
+      <div class="form-group"><label class="form-label">Last Day</label><input type="text" id="ex_lastday" placeholder="MM/DD/YYYY"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Department</label>
+        <select id="ex_dept"><option>Engineering</option><option>Product</option><option>Design</option><option>Marketing</option><option>Sales</option><option>HR</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Tenure</label>
+        <select id="ex_tenure"><option>Less than 1 year</option><option>1–2 years</option><option>2–5 years</option><option>5+ years</option></select>
+      </div>
+    </div>
+
+    <div class="form-section-title">Reason for Leaving</div>
+    <div class="form-group">
+      <label class="form-label">Primary reason for leaving</label>
+      <div class="radio-group" style="flex-wrap:wrap">
+        ${['Better opportunity','Compensation','Lack of growth','Work-life balance','Management issues','Relocation','Personal reasons','Company culture','Other'].map(r =>
+          `<label class="radio-option" onclick="selectRadio(this)"><input type="radio" name="ex_reason" value="${r}"> ${r}</label>`
+        ).join('')}
+      </div>
+    </div>
+
+    <div class="form-section-title">Experience Ratings</div>
+    ${buildRatingGroup('ex_r1', 'Overall Experience', 'Your overall experience at the company')}
+    ${buildRatingGroup('ex_r2', 'Management Quality', 'Quality of leadership and support received')}
+    ${buildRatingGroup('ex_r3', 'Growth Opportunities', 'Career development and skill-building options')}
+    ${buildRatingGroup('ex_r4', 'Work Environment', 'Culture, team dynamics, and day-to-day experience')}
+    ${buildRatingGroup('ex_r5', 'Onboarding & Training', 'How well you were set up for success')}
+
+    <div class="form-section-title">Candid Reflections</div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What did you value most about working here?</label>
+      <textarea id="ex_best" placeholder="Share what made this role or company memorable…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What would have made you stay?</label>
+      <textarea id="ex_stay" placeholder="Be honest — this is your opportunity to make a difference for future employees…"></textarea>
+    </div></div>
+    <div class="form-group form-row single"><div>
+      <label class="form-label">What advice would you give to your successor?</label>
+      <textarea id="ex_advice" placeholder="Tips, insights, things you wish you knew…"></textarea>
+    </div></div>
+
+    <div class="form-section-title">Final Question</div>
+    <div class="form-group">
+      <label class="form-label">Would you recommend this company as a place to work?</label>
+      ${buildNPSScale('ex_nps')}
+    </div>`;
+}
+
+function submitExitInterview() {
+  const score = avgRatings(['ex_r1','ex_r2','ex_r3','ex_r4','ex_r5']);
+  const reason = document.querySelector('[name="ex_reason"]:checked')?.value || 'Not specified';
+  const record = {
+    type: 'exit',
+    submittedBy: getVal('ex_name') || 'Anonymous',
+    subject: 'Exit Interview',
+    department: getVal('ex_dept'),
+    tenure: getVal('ex_tenure'),
+    reasonForLeaving: reason,
+    ratings: {
+      overall: getStarVal('ex_r1'),
+      management: getStarVal('ex_r2'),
+      growth: getStarVal('ex_r3'),
+      environment: getStarVal('ex_r4'),
+      onboarding: getStarVal('ex_r5'),
+    },
+    valuedMost: getVal('ex_best'),
+    wouldHaveStayed: getVal('ex_stay'),
+    advice: getVal('ex_advice'),
+    nps: getScaleVal('ex_nps'),
+    score: Math.round(score * 10) / 10
+  };
+  addRecord(record);
+  toast('✅ Exit interview submitted. Thank you.', 'success');
+  renderExitForm();
+}
+
+// ========================
+// RESPONSES TABLE
+// ========================
+function renderTable() {
+  const db = getDB();
+  const filter = document.getElementById('filterType')?.value;
+  const data = filter ? db.filter(r => r.type === filter) : db;
+  const tbody = document.getElementById('responseTable');
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No responses yet</div><div class="empty-sub">Submit some feedback to see it here</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map((r, i) => `
+    <tr>
+      <td style="color:var(--text3)">#${String(i+1).padStart(3,'0')}</td>
+      <td><span class="type-badge badge-${r.type}">${typeLabel(r.type)}</span></td>
+      <td style="color:var(--text)">${r.submittedBy}</td>
+      <td>${r.subject || '—'}</td>
+      <td>
+        <div class="score-bar">
+          <div class="score-fill" style="width:${(r.score/5)*60}px;background:${scoreColor(r.score)}"></div>
+          <span class="score-num">${r.score > 0 ? r.score.toFixed(1) : '—'}</span>
+        </div>
+      </td>
+      <td style="color:var(--text3)">${formatDate(r.createdAt)}</td>
+      <td>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openDetail(${r.id})">View</button>
+        <button class="btn btn-danger" onclick="deleteRecord(${r.id})">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+function typeLabel(type) {
+  const map = { manager:'Manager', peer:'Peer', hr:'HR', self:'Self', '360':'360°', exit:'Exit' };
+  return map[type] || type;
+}
+
+function scoreColor(score) {
+  if (score >= 4) return 'var(--success)';
+  if (score >= 3) return 'var(--warning)';
+  return 'var(--danger)';
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function deleteRecord(id) {
+  const db = getDB().filter(r => r.id !== id);
+  saveDB(db);
+  renderTable();
+  updateBadge();
+  refreshDashboard();
+  toast('Record deleted', 'info');
+}
+
+function clearAllData() {
+  if (!confirm('Delete all feedback data? This cannot be undone.')) return;
+  saveDB([]);
+  renderTable();
+  updateBadge();
+  refreshDashboard();
+  toast('All data cleared', 'info');
+}
+
+// ========================
+// DETAIL MODAL
+// ========================
+function openDetail(id) {
+  const record = getDB().find(r => r.id === id);
+  if (!record) return;
+
+  document.getElementById('modalTitle').textContent = `${typeLabel(record.type)} Feedback`;
+  document.getElementById('modalSub').textContent = `Submitted on ${formatDate(record.createdAt)}`;
+
+  const ratings = record.ratings || {};
+  const ratingHtml = Object.entries(ratings).map(([k,v]) => `
+    <div class="detail-row">
+      <div class="detail-key">${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}</div>
+      <div class="detail-val">
+        <span style="color:var(--accent2)">${'★'.repeat(v)}${'☆'.repeat(5-v)}</span>
+        <span style="color:var(--text3);margin-left:8px;font-size:12px">${v}/5</span>
+      </div>
+    </div>`).join('');
+
+  const fields = [
+    ['Submitted By', record.submittedBy],
+    ['Subject', record.subject],
+    ['Department', record.department],
+    ['Period', record.period],
+    ['Tenure', record.tenure],
+    ['Relationship', record.relationship],
+    ['Reason for Leaving', record.reasonForLeaving],
+    ['Culture Values', record.cultureValues?.join(', ')],
+    ['Strengths', record.strengths],
+    ['Improvements', record.improvements || record.growth],
+    ['Accomplishments', record.accomplishments],
+    ['Challenges', record.challenges],
+    ['Goals', record.devGoals],
+    ['Start', record.start],
+    ['Stop', record.stop],
+    ['Continue', record.continue],
+    ['Best Part', record.valuedMost],
+    ['Would Have Stayed', record.wouldHaveStayed],
+    ['Advice', record.advice],
+  ].filter(([,v]) => v);
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="detail-row">
+      <div class="detail-key">Type</div>
+      <div class="detail-val"><span class="type-badge badge-${record.type}">${typeLabel(record.type)}</span></div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-key">Overall Score</div>
+      <div class="detail-val" style="color:${scoreColor(record.score)};font-weight:600;font-size:18px">${record.score > 0 ? record.score.toFixed(1)+' / 5.0' : 'N/A'}</div>
+    </div>
+    ${fields.map(([k,v]) => `
+      <div class="detail-row">
+        <div class="detail-key">${k}</div>
+        <div class="detail-val">${v}</div>
+      </div>`).join('')}
+    ${ratingHtml ? '<div style="margin-top:12px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:10px 0 6px;border-top:1px solid var(--border)">Competency Ratings</div>' + ratingHtml : ''}
+    ${record.nps !== undefined && record.nps >= 0 ? `
+      <div class="detail-row">
+        <div class="detail-key">NPS Score</div>
+        <div class="detail-val" style="font-weight:600">${record.nps}/10</div>
+      </div>` : ''}`;
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open');
+}
+
+// ========================
+// DASHBOARD
+// ========================
+function refreshDashboard() {
+  const db = getDB();
+  document.getElementById('totalCount').textContent = db.length;
+  updateBadge();
+
+  const scores = db.filter(r => r.score > 0).map(r => r.score);
+  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
+  document.getElementById('avgScore').textContent = avg;
+
+  const now = new Date();
+  const weekAgo = new Date(now - 7*24*60*60*1000);
+  const weekCount = db.filter(r => new Date(r.createdAt) > weekAgo).length;
+  document.getElementById('weekCount').textContent = weekCount;
+
+  renderDonut(db);
+  renderBarChart(db);
+  renderActivity(db);
+  renderNPS(db);
+}
+
+function renderDonut(db) {
+  const types = { manager:0, peer:0, hr:0, self:0, '360':0, exit:0 };
+  db.forEach(r => { if (r.type in types) types[r.type]++; });
+  const total = Object.values(types).reduce((a,b)=>a+b,0);
+  if (!total) return;
+
+  const colors = { manager:'#7c6af5', peer:'#6af5c4', hr:'#f5a66a', self:'#f56a8a', '360':'#6ac4f5', exit:'#e0e06a' };
+  const labels = { manager:'Manager', peer:'Peer', hr:'HR', self:'Self', '360':'360°', exit:'Exit' };
+
+  const r = 35, cx = 50, cy = 50;
+  const circ = 2 * Math.PI * r;
+  let offset = 0;
+  let arcsHtml = '';
+
+  Object.entries(types).forEach(([type, count]) => {
+    if (!count) return;
+    const pct = count / total;
+    const dashArr = pct * circ;
+    arcsHtml += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[type]}" stroke-width="18"
+      stroke-dasharray="${dashArr} ${circ - dashArr}"
+      stroke-dashoffset="${-offset}"
+      transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += dashArr;
+  });
+
+  document.getElementById('donutChart').innerHTML =
+    `<circle cx="50" cy="50" r="35" fill="none" stroke="#2a2a38" stroke-width="18"/>` + arcsHtml;
+
+  document.getElementById('legendItems').innerHTML = Object.entries(types)
+    .filter(([,v]) => v > 0)
+    .map(([type, count]) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${colors[type]}"></div>
+      ${labels[type]}
+      <span class="legend-val">${count}</span>
+    </div>`).join('');
+}
+
+function renderBarChart(db) {
+  const months = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    months.push({ label: d.toLocaleString('default',{month:'short'}), year: d.getFullYear(), month: d.getMonth(), count: 0 });
+  }
+  db.forEach(r => {
+    const d = new Date(r.createdAt);
+    const m = months.find(m => m.month === d.getMonth() && m.year === d.getFullYear());
+    if (m) m.count++;
+  });
+  const max = Math.max(...months.map(m => m.count), 1);
+  const colors = ['#7c6af5','#6af5c4','#f5a66a','#f56a8a','#6ac4f5','#c4f56a','#7c6af5'];
+
+  document.getElementById('barChart').innerHTML = months.map((m, i) => `
+    <div class="bar-group">
+      <div class="bar" data-val="${m.count}" style="height:${(m.count/max)*120}px;background:${colors[i]};opacity:${m.count===0?0.2:0.85}"></div>
+      <div class="bar-label">${m.label}</div>
+    </div>`).join('');
+}
+
+function renderActivity(db) {
+  const el = document.getElementById('activityFeed');
+  if (!db.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:20px"><div class="empty-icon">💤</div><div class="empty-sub">No activity yet</div></div>`;
+    return;
+  }
+  const colors = { manager:'#7c6af5', peer:'#6af5c4', hr:'#f5a66a', self:'#f56a8a', '360':'#6ac4f5', exit:'#e0e06a' };
+  const msgs = { manager:'submitted Manager feedback for', peer:'reviewed peer', hr:'submitted HR feedback', self:'completed a Self Review', '360':'completed 360° review for', exit:'submitted an Exit Interview' };
+
+  el.innerHTML = db.slice(0, 6).map(r => `
+    <div class="activity-item">
+      <div class="activity-dot" style="background:${colors[r.type]||'#7c6af5'}"></div>
+      <div>
+        <div class="activity-text"><strong>${r.submittedBy}</strong> ${msgs[r.type]} <strong>${r.subject !== r.submittedBy ? r.subject : ''}</strong></div>
+        <div class="activity-time">${formatDate(r.createdAt)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderNPS(db) {
+  const npsItems = db.filter(r => r.nps !== undefined && r.nps >= 0);
+  if (!npsItems.length) {
+    document.getElementById('npsScore').textContent = '—';
+    return;
+  }
+  const promoters = npsItems.filter(r => r.nps >= 9).length;
+  const detractors = npsItems.filter(r => r.nps <= 6).length;
+  const n = npsItems.length;
+  const nps = Math.round(((promoters - detractors) / n) * 100);
+  document.getElementById('npsScore').textContent = (nps > 0 ? '+' : '') + nps;
+
+  const passives = n - promoters - detractors;
+  const bar = document.getElementById('npsBar');
+  bar.innerHTML = `
+    <div class="nps-segment" style="flex:${detractors||0.1};background:#f56a8a">${detractors}</div>
+    <div class="nps-segment" style="flex:${passives||0.1};background:#f5a66a">${passives}</div>
+    <div class="nps-segment" style="flex:${promoters||0.1};background:#6af5c4">${promoters}</div>`;
+
+  // Sentiment indicator
+  const avgNPS = npsItems.reduce((a,r) => a+r.nps, 0) / n;
+  document.getElementById('sentimentIndicator').style.left = `${(avgNPS/10)*90}%`;
+}
+
+// ========================
+// ANALYTICS
+// ========================
+function renderAnalytics() {
+  const db = getDB();
+
+  // Avg score by type
+  const typeAvg = {};
+  db.forEach(r => {
+    if (!typeAvg[r.type]) typeAvg[r.type] = { sum:0, count:0 };
+    if (r.score > 0) { typeAvg[r.type].sum += r.score; typeAvg[r.type].count++; }
+  });
+
+  const colors = { manager:'#7c6af5', peer:'#6af5c4', hr:'#f5a66a', self:'#f56a8a', '360':'#6ac4f5', exit:'#e0e06a' };
+  const labels = { manager:'Manager', peer:'Peer', hr:'HR', self:'Self', '360':'360°', exit:'Exit' };
+
+  const avgEl = document.getElementById('avgByType');
+  const types = Object.keys(typeAvg);
+  if (!types.length) {
+    avgEl.innerHTML = `<div style="color:var(--text3);font-size:13px">No data yet</div>`;
+  } else {
+    avgEl.innerHTML = types.map(t => {
+      const avg = typeAvg[t].count ? (typeAvg[t].sum / typeAvg[t].count).toFixed(1) : 'N/A';
+      const pct = typeAvg[t].count ? (typeAvg[t].sum / typeAvg[t].count / 5 * 100) : 0;
+      return `
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px;color:var(--text)">${labels[t]}</span>
+          <span style="font-size:13px;font-weight:600;color:${colors[t]}">${avg}</span>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${colors[t]}"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Keywords
+  const allText = db.map(r => [r.strengths, r.improvements, r.growth, r.changes, r.accomplishments, r.valuedMost, r.start, r.stop, r.continue].filter(Boolean).join(' ')).join(' ');
+  const stopWords = new Set(['the','and','is','in','of','to','a','for','with','on','at','by','was','are','it','be','as','this','that','they','have','has','had','but','from','or','an','not','can','do','did','we','you','i','my','our','your','their','he','she','his','her','its','so','if','up','more','also','than','when','how','what','there']);
+  const words = allText.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+  const freq = {};
+  words.filter(w => !stopWords.has(w)).forEach(w => freq[w] = (freq[w]||0)+1);
+  const topWords = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,16);
+
+  const kwEl = document.getElementById('keywordsCloud');
+  if (!topWords.length) {
+    kwEl.innerHTML = `<div style="color:var(--text3);font-size:13px">Submit feedback to see keyword analysis</div>`;
+  } else {
+    const maxF = topWords[0][1];
+    kwEl.innerHTML = topWords.map(([w,f]) => {
+      const size = 11 + (f/maxF)*10;
+      const op = 0.5 + (f/maxF)*0.5;
+      return `<span class="tag" style="font-size:${size}px;opacity:${op}">${w}</span>`;
+    }).join('');
+  }
+
+  // Heatmap (last 28 days)
+  const heatEl = document.getElementById('heatmapGrid');
+  const cells = Array.from({length:28}, (_,i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (27 - i));
+    const iso = d.toISOString().split('T')[0];
+    const count = db.filter(r => r.createdAt && r.createdAt.startsWith(iso)).length;
+    const opacity = count === 0 ? 0.08 : Math.min(0.2 + count * 0.2, 1);
+    return `<div class="heatmap-cell" style="background:rgba(124,106,245,${opacity})" title="${iso}: ${count} submissions"></div>`;
+  }).join('');
+  heatEl.innerHTML = cells;
+
+  // Score distribution
+  const dist = {1:0,2:0,3:0,4:0,5:0};
+  db.filter(r=>r.score>0).forEach(r => {
+    const bucket = Math.round(r.score);
+    if (bucket in dist) dist[bucket]++;
+  });
+  const maxD = Math.max(...Object.values(dist), 1);
+  const distColors = ['#f56a8a','#f5a66a','#f5d36a','#a8f56a','#6af5c4'];
+  document.getElementById('distChart').innerHTML = Object.entries(dist).map(([k,v],i) => `
+    <div class="bar-group">
+      <div class="bar" data-val="${v}" style="height:${(v/maxD)*90}px;background:${distColors[i]};opacity:${v===0?0.15:0.9}"></div>
+      <div class="bar-label">${k}★</div>
+    </div>`).join('');
+
+  // Sentiment summary
+  const totalR = db.length;
+  const positive = db.filter(r => r.score >= 4).length;
+  const neutral = db.filter(r => r.score >= 2.5 && r.score < 4).length;
+  const negative = db.filter(r => r.score > 0 && r.score < 2.5).length;
+  const sentEl = document.getElementById('sentimentSummary');
+  if (!totalR) {
+    sentEl.innerHTML = `<div style="color:var(--text3);font-size:13px">Submit feedback to see sentiment data</div>`;
+  } else {
+    sentEl.innerHTML = `
+      ${[['😊 Positive', positive, '#6af5c4'], ['😐 Neutral', neutral, '#f5a66a'], ['😞 Negative', negative, '#f56a8a']].map(([label,count,color]) => `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px">${label}</span>
+          <span style="font-size:12px;color:var(--text3)">${count} (${totalR?Math.round(count/totalR*100):0}%)</span>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:${totalR?count/totalR*100:0}%;background:${color}"></div></div>
+      </div>`).join('')}
+      <div style="padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text3)">
+        Based on ${totalR} total submissions
+      </div>`;
+  }
+}
+
+// ========================
+// EXPORT CSV
+// ========================
+function exportCSV() {
+  const db = getDB();
+  if (!db.length) { toast('No data to export', 'warn'); return; }
+  const headers = ['ID','Type','Submitted By','Subject','Score','Date','Department','Period'];
+  const rows = db.map(r => [
+    r.id, r.type, `"${r.submittedBy}"`, `"${r.subject||''}"`,
+    r.score, formatDate(r.createdAt), r.department||'', r.period||''
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `vectyra_export_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  toast('✅ CSV exported!', 'success');
+}
+
+// ========================
+// TOAST
+// ========================
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  const colors = { success: '#6af5c4', warn: '#f5a66a', info: '#7c6af5', error: '#f56a8a' };
+  el.className = 'toast';
+  el.style.borderLeftColor = colors[type] || colors.info;
+  el.innerHTML = msg;
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'slideOut 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+// ========================
+// SEED DATA (demo)
+// ========================
+function seedDemoData() {
+  if (getDB().length > 0) return;
+  const demos = [
+    { type:'manager', submittedBy:'Sarah K.', subject:'Tom Harris', department:'Engineering', period:'Q1 2025', ratings:{communication:5,leadership:4,support:4,recognition:3,problemSolving:5}, strengths:'Excellent at removing blockers and giving clear direction.', improvements:'Could communicate roadmap changes earlier.', nps:9, score:4.2, anonymous:true },
+    { type:'peer', submittedBy:'Marcus L.', subject:'Priya Mehta', relationship:'Direct Team Member', ratings:{collaboration:5,communication:4,reliability:5,technical:4,impact:4}, strengths:'Incredible at documentation and knowledge sharing.', growth:'Could speak up more in cross-team meetings.', score:4.4 },
+    { type:'hr', submittedBy:'Anonymous', subject:'HR & Culture', tenure:'1–2 years', ratings:{workLifeBalance:3,inclusion:4,careerGrowth:3,compensation:3,hrResponsiveness:4}, cultureValues:['Collaboration','Transparency'], changes:'More transparent promotion criteria would help.', nps:7, score:3.4 },
+    { type:'self', submittedBy:'Alex Chen', subject:'Alex Chen (Self)', role:'Senior Engineer', department:'Product', ratings:{quality:4,goals:5,collaboration:4,initiative:3,growth:4}, accomplishments:'Led migration to microservices, reduced deploy time by 40%.', devGoals:'Improve public speaking and stakeholder communication.', score:4.0 },
+    { type:'360', submittedBy:'Jordan P.', subject:'Sam Rivera', relationship:'Peer', ratings:{strategic:4,ei:5,execution:4,teamBuilding:5,adaptability:3,communication:4}, start:'Sharing more context in decisions.', stop:'Overcomplicating simple processes.', continue:'Your empathetic 1:1s — people really appreciate them.', score:4.2 },
+    { type:'exit', submittedBy:'Anonymous', subject:'Exit Interview', department:'Sales', tenure:'2–5 years', reasonForLeaving:'Better opportunity', ratings:{overall:3,management:3,growth:2,environment:4,onboarding:4}, valuedMost:'The team culture was genuinely great.', wouldHaveStayed:'A clear promotion path and better comp benchmarking.', nps:6, score:3.2 },
+  ];
+  const db = getDB();
+  demos.forEach(d => {
+    const offset = Math.floor(Math.random() * 30);
+    const date = new Date();
+    date.setDate(date.getDate() - offset);
+    d.id = Date.now() + Math.random();
+    d.createdAt = date.toISOString();
+    db.push(d);
+  });
+  saveDB(db);
+}
+
+// ========================
+// INIT
+// ========================
+seedDemoData();
+updateBadge();
+refreshDashboard();
+</script>
+</body>
+</html>

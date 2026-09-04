@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vectyra — Team Roadmaps, Task Execution & 360° Talent Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+<!-- DEMO MODE TOP BANNER -->
+<div id="demoBanner" class="demo-banner" style="display:none">
+  <div>⚡ <strong>DEMO MODE ACTIVE</strong> — Running in offline test mode with sample company data.</div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button onclick="disableDemoMode()" style="background:rgba(255,255,255,.2)">Exit Demo Mode</button>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-text">Vect<span>yra</span></div>
+      <div class="auth-tagline">Team Roadmaps, Task Execution & 360° Talent Intelligence</div>
+    </div>
+    <div class="auth-card">
+      <div style="padding-bottom:12px;margin-bottom:16px;border-bottom:1px solid var(--border)">
+        <h3 style="margin:0;font-size:18px;font-weight:700">Account Sign In</h3>
+        <p style="margin:4px 0 0 0;font-size:12px;color:var(--t3)">Enter credentials provided by your Super Admin / HR</p>
+      </div>
+      <div id="authError"></div>
+
+      <!-- LOGIN FORM -->
+      <div id="loginForm">
+        <div class="form-group">
+          <label class="form-label">Work Email</label>
+          <input class="form-input" id="loginEmail" type="email" placeholder="you@company.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="loginPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" id="loginBtn">Sign In</button>
+      </div>
+
+      <!-- TOOLBAR: DEMO & THEME TOGGLE -->
+      <div class="auth-toolbar" style="margin-top:16px">
+        <button class="btn btn-ghost" onclick="enableDemoMode()">⚡ Try Demo Mode</button>
+        <button class="btn btn-ghost" onclick="toggleTheme()" id="authThemeBtn">☀️ Light</button>
+      </div>
+
+      <div class="auth-note">
+        Accounts are provisioned by your Super Admin. Public self-registration is disabled for security.<br>
+        <span style="color:var(--t3)">Default Super Admin: saurabhsharma@niralnetworks.in / superadmin</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="appShell">
+  <nav class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-text">Vect<span>yra</span></div>
+      <div id="sbRoleBadge" class="sb-role-badge"></div>
+    </div>
+    <div class="sb-nav" id="sbNav"></div>
+    <div class="sb-bottom">
+      <div class="user-chip">
+        <div class="avatar" id="sbAvatar"></div>
+        <div>
+          <div class="user-name" id="sbName"></div>
+          <div class="user-role-text" id="sbRoleText"></div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </nav>
+  <main class="main" id="mainArea">
+    <div class="topbar">
+      <div class="search-bar">
+        <span class="si">🔍</span>
+        <input type="text" placeholder="Search feedback, people, teams…" id="globalSearch" oninput="handleGlobalSearch(this.value)" onblur="setTimeout(()=>document.getElementById('searchResults')?.classList.remove('open'),200)">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <button class="theme-toggle" onclick="toggleTheme()" id="topbarThemeBtn">☀️ Light</button>
+        <div class="notif-wrap">
+          <button class="notif-btn" onclick="toggleNotifPanel()" title="Notifications">🔔<span class="notif-dot" id="notifDot"></span></button>
+          <div class="notif-panel" id="notifPanel">
+            <div class="notif-head">Notifications <button class="btn btn-ghost btn-sm" onclick="markAllRead()" style="padding:3px 8px;font-size:10px">Mark all read</button></div>
+            <div id="notifList"><div style="padding:20px;text-align:center;font-size:12px;color:var(--t3)">No notifications yet</div></div>
+          </div>
+        </div>
+        <button class="notif-btn" onclick="navigate('profile')" title="My Profile">👤</button>
+      </div>
+    </div>
+    <div id="pageContent"></div>
+  </main>
+</div>
+
+<!-- TOAST WRAPPER -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- MODAL OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div>
+        <div class="card-title" id="modalTitle"></div>
+        <div class="card-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- MODULAR JAVASCRIPT ARCHITECTURE -->
+<script src="js/api.js"></script>
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/forms.js"></script>
+
+<!-- VIEWS -->
+<script src="js/views/dashboard.js"></script>
+<script src="js/views/quarterlyFeedback.js"></script>
+<script src="js/views/feedback.js"></script>
+<script src="js/views/analytics.js"></script>
+<script src="js/views/users.js"></script>
+<script src="js/views/teams.js"></script>
+<script src="js/views/templatesView.js"></script>
+<script src="js/views/profile.js"></script>
+<script src="js/views/orgChart.js"></script>
+<script src="js/views/departments.js"></script>
+<script src="js/views/roadmap.js"></script>
+
+<!-- ROUTER -->
+<script src="js/router.js"></script>
+</body>
+</html>
