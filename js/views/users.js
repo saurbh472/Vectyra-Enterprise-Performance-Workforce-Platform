@@ -11,14 +11,15 @@ async function pageUsers() {
   }
 
   const isSuper = currentProfile?.role === 'super_admin';
+  const canManage = ['admin', 'super_admin'].includes(currentProfile?.role);
 
   document.getElementById('pageContent').innerHTML = `
   <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
     <div>
       <div class="page-title">User Management</div>
-      <div class="page-sub">Provision user accounts, assign roles, view full profiles &amp; team structures</div>
+      <div class="page-sub">Provision user accounts, assign roles, manage core &amp; supporting teams, and govern access</div>
     </div>
-    <button class="btn btn-primary" onclick="openCreateUserModal()">➕ Create New User Account</button>
+    ${canManage ? `<button class="btn btn-primary" onclick="openCreateUserModal()">➕ Create New User Account</button>` : ''}
   </div>
   <div class="content fade-up">
     <div class="card">
@@ -28,52 +29,154 @@ async function pageUsers() {
             <tr>
               <th>User</th>
               <th>Role</th>
-              <th>Team</th>
+              <th>⭐ Core Team</th>
+              <th>🤝 Supporting Teams</th>
               <th>Department</th>
               <th>Status</th>
               <th style="text-align:right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${allUsers.map(u => `
-            <tr>
-              <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                  <div class="avatar" style="width:32px;height:32px;font-size:11px;font-weight:700">${avatarInitials(u.full_name)}</div>
-                  <div>
-                    <div style="color:var(--text);font-size:13px;font-weight:600">${escapeHtml(u.full_name)}</div>
-                    <div style="font-size:11px;color:var(--t3)">${escapeHtml(u.email)}</div>
+            ${allUsers.map(u => {
+              const secTeams = (u.secondary_team_ids || [])
+                .map(tid => allTeams.find(t => t.id === tid))
+                .filter(Boolean);
+              
+              const canDeleteThisUser = canManage && 
+                u.id !== currentProfile.id && 
+                !(u.role === 'super_admin' && !isSuper);
+
+              return `
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div class="avatar" style="width:32px;height:32px;font-size:11px;font-weight:700">${avatarInitials(u.full_name)}</div>
+                    <div>
+                      <div style="color:var(--text);font-size:13px;font-weight:600">${escapeHtml(u.full_name)}</div>
+                      <div style="font-size:11px;color:var(--t3)">${escapeHtml(u.email)}</div>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td>
-                <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateUserRole('${u.id}',this.value)">
-                  <option value="employee" ${u.role==='employee'?'selected':''}>Employee</option>
-                  <option value="manager" ${u.role==='manager'?'selected':''}>Manager</option>
-                  <option value="admin" ${u.role==='admin'?'selected':''}>Admin (HR)</option>
-                  <option value="super_admin" ${u.role==='super_admin'?'selected':''}>Super Admin</option>
-                </select>
-              </td>
-              <td>
-                <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateUserTeam('${u.id}',this.value)">
-                  <option value="">No Team</option>
-                  ${allTeams.map(t => `<option value="${t.id}" ${u.team_id===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
-                </select>
-              </td>
-              <td style="color:var(--t3);font-size:12px">${escapeHtml(u.department || '—')}</td>
-              <td><span class="badge badge-${u.role}">${roleLabel(u.role)}</span></td>
-              <td style="text-align:right">
-                <div style="display:flex;gap:6px;justify-content:flex-end">
-                  <button class="btn btn-ghost btn-sm" onclick="openViewUserModal('${u.id}')" title="View Full Profile & Info">👁️ View Info</button>
-                  ${isSuper && u.id !== currentProfile.id ? `<button class="btn btn-ghost btn-sm" style="color:var(--err)" onclick="confirmDeleteUser('${u.id}','${escapeHtml(u.full_name)}')">🗑️</button>` : ''}
-                </div>
-              </td>
-            </tr>`).join('')}
+                </td>
+                <td>
+                  <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateUserRole('${u.id}',this.value)">
+                    <option value="employee" ${u.role==='employee'?'selected':''}>Employee</option>
+                    <option value="manager" ${u.role==='manager'?'selected':''}>Manager</option>
+                    <option value="admin" ${u.role==='admin'?'selected':''}>Admin (HR)</option>
+                    <option value="super_admin" ${u.role==='super_admin'?'selected':''}>Super Admin</option>
+                  </select>
+                </td>
+                <td>
+                  <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto" onchange="updateUserTeam('${u.id}',this.value)">
+                    <option value="">No Core Team</option>
+                    ${allTeams.map(t => `<option value="${t.id}" ${u.team_id===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+                  </select>
+                </td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    ${secTeams.length ? secTeams.map(st => `
+                      <span style="font-size:10px;padding:2px 6px;border-radius:10px;background:rgba(79,70,229,0.12);color:var(--a1);border:1px solid rgba(79,70,229,0.3);font-weight:600">
+                        🤝 ${escapeHtml(st.name)}
+                      </span>
+                    `).join('') : '<span style="font-size:11px;color:var(--t3);font-style:italic">None</span>'}
+                    
+                    ${canManage ? `
+                      <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:10px" onclick="openEditSupportingTeamsModal('${u.id}')" title="Assign Supporting Teams">
+                        ⚙️ Edit
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+                <td style="color:var(--t3);font-size:12px">${escapeHtml(u.department || '—')}</td>
+                <td><span class="badge badge-${u.role}">${roleLabel(u.role)}</span></td>
+                <td style="text-align:right">
+                  <div style="display:flex;gap:6px;justify-content:flex-end">
+                    <button class="btn btn-ghost btn-sm" onclick="openViewUserModal('${u.id}')" title="View Full Profile & Info">👁️ View Info</button>
+                    ${canDeleteThisUser ? `
+                      <button class="btn btn-ghost btn-sm" style="color:var(--err)" onclick="confirmDeleteUser('${u.id}','${escapeHtml(u.full_name)}')" title="Delete User Account">
+                        🗑️ Delete
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
     </div>
   </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// SUPPORTING TEAMS MANAGEMENT MODAL
+// ═══════════════════════════════════════════════
+function openEditSupportingTeamsModal(userId) {
+  const u = allUsers.find(x => x.id === userId);
+  if (!u) return toast('User not found', 'warn');
+
+  const currentSecTeamIds = u.secondary_team_ids || [];
+
+  document.getElementById('modalTitle').textContent = '🤝 Manage Supporting Teams';
+  document.getElementById('modalSub').textContent   = `Select secondary/supporting teams for ${u.full_name}`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--t2)">
+      Employees can belong to <strong>1 Core Team</strong> (primary) and contribute to <strong>Multiple Supporting Teams</strong> (secondary).
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label class="form-label" style="margin-bottom:8px">Select Supporting Teams:</label>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;padding-right:6px">
+        ${allTeams.map(t => {
+          const isCore = u.team_id === t.id;
+          const isChecked = currentSecTeamIds.includes(t.id);
+          return `
+            <label style="display:flex;align-items:center;justify-content:space-between;background:var(--s1);border:1px solid var(--border);padding:8px 12px;border-radius:8px;cursor:${isCore ? 'not-allowed' : 'pointer'};opacity:${isCore ? 0.6 : 1}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="checkbox" name="secTeamCheck" value="${t.id}" ${isChecked ? 'checked' : ''} ${isCore ? 'disabled' : ''}>
+                <div>
+                  <strong style="font-size:13px;color:var(--text)">${escapeHtml(t.name)}</strong>
+                  <span style="font-size:11px;color:var(--t3);margin-left:6px">(${escapeHtml(t.department || 'General')})</span>
+                </div>
+              </div>
+              ${isCore ? '<span style="font-size:10px;padding:2px 6px;border-radius:10px;background:rgba(234,179,8,0.15);color:#d97706;font-weight:700">⭐ Core Team</span>' : ''}
+            </label>
+          `;
+        }).join('')}
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupportingTeams('${u.id}')">💾 Save Supporting Teams</button>
+    </div>`;
+
+  openModal();
+}
+
+async function saveSupportingTeams(userId) {
+  const checkboxes = document.querySelectorAll('input[name="secTeamCheck"]:checked');
+  const selectedSecTeams = Array.from(checkboxes).map(cb => cb.value);
+
+  const u = allUsers.find(x => x.id === userId);
+  if (!u) return;
+
+  if (isDemo) {
+    u.secondary_team_ids = selectedSecTeams;
+    toast('✅ Supporting teams updated!', 'success');
+    closeModal();
+    pageUsers();
+    return;
+  }
+
+  try {
+    await API.updateUser(userId, { secondary_team_ids: selectedSecTeams });
+    u.secondary_team_ids = selectedSecTeams;
+    toast('✅ Supporting teams updated!', 'success');
+    closeModal();
+    pageUsers();
+  } catch (err) {
+    toast(`Failed to update supporting teams: ${err.message}`, 'err');
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -83,7 +186,11 @@ function openViewUserModal(userId) {
   const u = allUsers.find(x => x.id === userId);
   if (!u) return toast('User not found', 'warn');
 
-  const team = allTeams.find(t => t.id === u.team_id);
+  const coreTeam = allTeams.find(t => t.id === u.team_id);
+  const secTeams = (u.secondary_team_ids || [])
+    .map(tid => allTeams.find(t => t.id === tid))
+    .filter(Boolean);
+
   const userBadges = allBadges.filter(b => b.awarded_to === u.id);
   const userGoals  = allGoals.filter(g => g.assigned_to === u.id);
   const fbReceived = feedbackCache.filter(f => f.receiver_id === u.id || f.subject_id === u.id);
@@ -105,7 +212,33 @@ function openViewUserModal(userId) {
         <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="badge badge-${u.role}">${roleLabel(u.role)}</span>
           <span style="font-size:11px;color:var(--t2);background:var(--s1);padding:2px 8px;border-radius:12px;border:1px solid var(--border)">🏢 ${escapeHtml(u.department || 'No Department')}</span>
-          <span style="font-size:11px;color:var(--t2);background:var(--s1);padding:2px 8px;border-radius:12px;border:1px solid var(--border)">🏷️ Team: ${escapeHtml(team?.name || 'Unassigned')}</span>
+          <span style="font-size:11px;font-weight:700;color:#d97706;background:rgba(234,179,8,0.15);padding:2px 8px;border-radius:12px;border:1px solid rgba(234,179,8,0.3)">⭐ Core Team: ${escapeHtml(coreTeam?.name || 'Unassigned')}</span>
+          ${secTeams.map(st => `
+            <span style="font-size:11px;font-weight:600;color:var(--a1);background:rgba(79,70,229,0.12);padding:2px 8px;border-radius:12px;border:1px solid rgba(79,70,229,0.3)">🤝 Supporting: ${escapeHtml(st.name)}</span>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAMS STRUCTURE SUMMARY -->
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">Team Structure Assignments</div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:var(--s2);border:1px solid var(--border);padding:10px;border-radius:8px">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px;font-weight:700">⭐ CORE TEAM (PRIMARY)</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(coreTeam?.name || 'Unassigned')}</div>
+        </div>
+
+        <div style="background:var(--s2);border:1px solid var(--border);padding:10px;border-radius:8px">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px;font-weight:700">🤝 SUPPORTING TEAMS (SECONDARY)</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            ${secTeams.length ? secTeams.map(st => `
+              <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(79,70,229,0.12);color:var(--a1);border:1px solid rgba(79,70,229,0.3);font-weight:600">
+                🤝 ${escapeHtml(st.name)}
+              </span>
+            `).join('') : '<span style="font-size:12px;color:var(--t3);font-style:italic">No Supporting Teams Assigned</span>'}
+          </div>
         </div>
       </div>
     </div>
@@ -197,7 +330,7 @@ function openCreateUserModal() {
   document.getElementById('modalSub').textContent   = 'Provision credentials for employee login';
   document.getElementById('modalBody').innerHTML = `
     <div style="background:rgba(79,70,229,.08);border:1px solid rgba(79,70,229,.2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--t2)">
-      🔑 <b>SuperAdmin Provisioning:</b> After creating this account, copy the credentials and securely share them with the user.
+      🔑 <b>SuperAdmin / HR Provisioning:</b> After creating this account, copy the credentials and securely share them with the user.
     </div>
 
     <div class="form-row mb16">
@@ -239,11 +372,23 @@ function openCreateUserModal() {
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Assign Team</label>
+        <label class="form-label">⭐ Core Team (Primary)</label>
         <select class="form-input" id="nuTeam">
-          <option value="">— Select Team —</option>
+          <option value="">— Select Primary Team —</option>
           ${teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.department||'General')})</option>`).join('')}
         </select>
+      </div>
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">🤝 Supporting Teams (Secondary)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:140px;overflow-y:auto;background:var(--s1);border:1px solid var(--border);padding:10px;border-radius:8px">
+        ${teams.map(t => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="checkbox" name="nuSecTeam" value="${t.id}">
+            <span>${escapeHtml(t.name)}</span>
+          </label>
+        `).join('')}
       </div>
     </div>
 
@@ -271,7 +416,7 @@ function onNuDeptChange(dept) {
   if (!teamSel) return;
   const teams = allTeams.length ? allTeams : MOCK_TEAMS;
   const filtered = dept ? teams.filter(t => t.department === dept) : teams;
-  teamSel.innerHTML = '<option value="">— Select Team —</option>' +
+  teamSel.innerHTML = '<option value="">— Select Primary Team —</option>' +
     filtered.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
 }
 
@@ -283,6 +428,9 @@ async function submitCreateUser() {
   const department = v('nuDept');
   const team_id    = v('nuTeam');
 
+  const secCheckboxes = document.querySelectorAll('input[name="nuSecTeam"]:checked');
+  const secondary_team_ids = Array.from(secCheckboxes).map(cb => cb.value);
+
   if (!full_name || !email || !password) {
     document.getElementById('createUserErr').innerHTML = `<div class="alert alert-err" style="margin-top:12px">Please fill in Full Name, Email, and Password.</div>`;
     return;
@@ -293,7 +441,7 @@ async function submitCreateUser() {
   if (isDemo) {
     const newProf = {
       id: 'u-' + Date.now(),
-      full_name, email, role, department, team_id,
+      full_name, email, role, department, team_id, secondary_team_ids,
       avatar_initials: avatarInitials(full_name)
     };
     MOCK_PROFILES.push(newProf);
@@ -306,7 +454,7 @@ async function submitCreateUser() {
 
   try {
     const res = await API.createUser({
-      full_name, email, password, role, department, team_id
+      full_name, email, password, role, department, team_id, secondary_team_ids
     });
     setBtnLoad('createUserBtn', false);
     await loadMeta();
@@ -323,7 +471,7 @@ function showCredentialsSummaryModal(name, email, password) {
   document.getElementById('modalSub').textContent   = 'Share these login credentials with the user';
   document.getElementById('modalBody').innerHTML = `
     <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text)">
-      Account for <b>${escapeHtml(name)}</b> has been created in PostgreSQL database.
+      Account for <b>${escapeHtml(name)}</b> has been created.
     </div>
 
     <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">

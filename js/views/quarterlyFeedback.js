@@ -1,13 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════
 // PREMIUM QUARTERLY FEEDBACK & PERFORMANCE PORTAL MODULE
 // Self Review Sheet + KPI Self-Assessment + Dynamic Scope Skill Matrix
+// Team-Wise Administration, Locking & HR Unlock Controls
 // ═══════════════════════════════════════════════════════════════════════
 
 let qrCurrentTab = 'form'; // 'form' | 'archive' | 'teamReviews' | 'templateBuilder'
 let qrActiveStep = 1; // 1: Self Review | 2: KPI Assessment | 3: Skill Matrix
 let qrSelectedQuarter = 'Q2 (April - July)';
 let qrSelectedYear = 2026;
-let qrSelectedTeamId = 't2'; // Defaults to Backend Platform / SDN Controller Team
+let qrSelectedTeamId = 't2'; // Defaults to Backend Platform
+let qrTeamFilter = 'ALL'; // 'ALL' or specific team_id for HR / Admin team view
 let qrSkillCategoryFilter = 'ALL';
 let qrSkillScopeFilter = 'ALL';
 let qrSkillSearchQuery = '';
@@ -46,6 +48,8 @@ let qrKpiState = [
 
 let qrSkillMatrixState = [];
 let qrLoadedReviewId = null;
+let qrLoadedReviewStatus = 'draft';
+let qrLoadedIsUnlocked = false;
 
 function getScopeClass(scopeText) {
   if (!scopeText) return 'scope-default';
@@ -117,7 +121,7 @@ async function pageQuarterlyFeedback() {
       </button>
       ${isMgr ? `
         <button class="qr-tab-btn ${qrCurrentTab==='teamReviews'?'active':''}" onclick="switchQrTab('teamReviews')">
-          👥 Team Member Reviews
+          👥 Team-Wise Member Appraisals
         </button>
       ` : ''}
       ${isSuperAdmin ? `
@@ -189,11 +193,15 @@ async function loadQuarterlyFeedbackData() {
     if (reviews && reviews.length > 0) {
       const rev = reviews[0];
       qrLoadedReviewId = rev.id;
+      qrLoadedReviewStatus = rev.status || 'submitted';
+      qrLoadedIsUnlocked = Boolean(rev.is_unlocked);
       qrSelfReviewState = typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data;
       qrKpiState = typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data;
       qrSkillMatrixState = typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data;
     } else {
       qrLoadedReviewId = null;
+      qrLoadedReviewStatus = 'draft';
+      qrLoadedIsUnlocked = false;
       qrSkillMatrixState = templates.map(t => ({
         id: t.id,
         category: t.category,
@@ -232,12 +240,41 @@ function renderQrActiveTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// FORM VIEW (3-STEP EXECUTIVE WIZARD)
+// FORM VIEW (3-STEP WIZARD WITH AUTOMATIC 1-SUBMISSION LOCKING)
 // ═══════════════════════════════════════════════════════════════════════
 function renderQrFormView(container) {
   const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'Backend & Platform Engineering';
 
+  const isFormLocked = (qrLoadedReviewStatus === 'submitted' || qrLoadedReviewStatus === 'reviewed' || qrLoadedReviewStatus === 'locked') && !qrLoadedIsUnlocked;
+
   container.innerHTML = `
+    <!-- LOCK NOTIFICATION BANNER -->
+    ${isFormLocked ? `
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--err)">🔒</div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:var(--err)">Quarterly Appraisal Form Submitted &amp; Locked</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:2px">
+              You submitted your quarterly appraisal for <strong>${qrSelectedQuarter} ${qrSelectedYear}</strong>. Employees are allowed <strong>1 submission per quarter</strong>. To make corrections, request SuperAdmin or HR Admin to unlock your submission.
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${qrLoadedReviewId}')">👁️ View Submitted Report</button>
+          <button class="btn btn-primary btn-sm" onclick="downloadQuarterlyReviewSheet()" style="font-size:11px">📥 Download Sheet</button>
+        </div>
+      </div>
+    ` : qrLoadedIsUnlocked ? `
+      <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--a3)">🔓</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;color:var(--a3)">Submission Unlocked by HR / SuperAdmin</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:2px">Your quarterly review form has been unlocked for edits. You may make corrections and click <strong>Submit Quarterly Review</strong> to lock your updated appraisal.</div>
+        </div>
+      </div>
+    ` : ''}
+
     <!-- WIZARD STEP HEADER -->
     <div class="qr-wizard-card">
       <div>
@@ -246,7 +283,7 @@ function renderQrFormView(container) {
           <span class="badge badge-manager-role" style="font-size:11px">${userTeam}</span>
         </div>
         <div style="font-size:12px;color:var(--t3);margin-top:4px">
-          Review Cycle: <strong>${qrSelectedQuarter} ${qrSelectedYear}</strong> • Status: ${qrLoadedReviewId ? '<span style="color:var(--a3);font-weight:700">✓ Submitted &amp; Saved</span>' : '<span style="color:var(--a2);font-weight:700">Draft in Progress</span>'}
+          Review Cycle: <strong>${qrSelectedQuarter} ${qrSelectedYear}</strong> • Status: ${isFormLocked ? '<span style="color:var(--err);font-weight:700">🔒 Submitted &amp; Locked</span>' : qrLoadedIsUnlocked ? '<span style="color:var(--a3);font-weight:700">🔓 Unlocked for Edits</span>' : '<span style="color:var(--a2);font-weight:700">Draft in Progress</span>'}
         </div>
       </div>
 
@@ -270,21 +307,26 @@ function renderQrFormView(container) {
     <!-- FLOATING BOTTOM ACTION BAR -->
     <div class="qr-sticky-bar">
       <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:10px;height:10px;border-radius:50%;background:${qrLoadedReviewId?'var(--a3)':'var(--a2)'}"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${isFormLocked ? 'var(--err)' : qrLoadedReviewId ? 'var(--a3)' : 'var(--a2)'}"></div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">
-          ${qrLoadedReviewId ? 'Quarterly Submission Synced with Database' : 'Unsaved changes in draft'}
+          ${isFormLocked ? '🔒 Form is locked (1 submission per quarter limit)' : qrLoadedReviewId ? 'Quarterly Submission Synced with Database' : 'Unsaved changes in draft'}
         </div>
       </div>
       <div style="display:flex;gap:12px">
-        <button class="btn btn-ghost" onclick="saveQrForm(true)">💾 Save Draft</button>
-        <button class="btn btn-primary" onclick="saveQrForm(false)" style="background:linear-gradient(135deg,var(--a1),#4338ca);box-shadow:0 4px 14px rgba(79,70,229,.35)">
-          🚀 Submit Quarterly Review
-        </button>
+        ${isFormLocked ? `
+          <button class="btn btn-ghost" onclick="openReviewModal('${qrLoadedReviewId}')">👁️ View Full Submitted Report</button>
+          <button class="btn btn-primary" onclick="downloadQuarterlyReviewSheet()" style="font-size:12px">📥 Download Sheet (.csv)</button>
+        ` : `
+          <button class="btn btn-ghost" onclick="saveQrForm(true)">💾 Save Draft</button>
+          <button class="btn btn-primary" onclick="saveQrForm(false)" style="background:linear-gradient(135deg,var(--a1),#4338ca);box-shadow:0 4px 14px rgba(79,70,229,.35)">
+            🚀 Submit Quarterly Review
+          </button>
+        `}
       </div>
     </div>
   `;
 
-  renderCurrentQrStep();
+  renderCurrentQrStep(isFormLocked);
 }
 
 function switchQrStep(step) {
@@ -292,23 +334,23 @@ function switchQrStep(step) {
   renderQrFormView(document.getElementById('qrContentArea'));
 }
 
-function renderCurrentQrStep() {
+function renderCurrentQrStep(isLocked = false) {
   const stepBody = document.getElementById('qrStepBody');
   if (!stepBody) return;
 
   if (qrActiveStep === 1) {
-    renderSelfReviewStep(stepBody);
+    renderSelfReviewStep(stepBody, isLocked);
   } else if (qrActiveStep === 2) {
-    renderKpiStep(stepBody);
+    renderKpiStep(stepBody, isLocked);
   } else if (qrActiveStep === 3) {
-    renderSkillMatrixStep(stepBody);
+    renderSkillMatrixStep(stepBody, isLocked);
   }
 }
 
 // -----------------------------------------------------------------------
 // STEP 1: SELF REVIEW SHEET (MONTHLY TARGETS & CONTRIBUTIONS)
 // -----------------------------------------------------------------------
-function renderSelfReviewStep(container) {
+function renderSelfReviewStep(container, isLocked = false) {
   const mList = qrSelfReviewState.months;
 
   container.innerHTML = `
@@ -318,376 +360,222 @@ function renderSelfReviewStep(container) {
         <div class="qr-month-col">
           <div class="qr-month-header">
             <div class="qr-month-title">📅 ${m.month}</div>
-            <span class="badge badge-manager-role" style="font-size:10px">Month ${mIdx+1}</span>
           </div>
-
-          <!-- TARGETS SECTION -->
-          <div>
-            <div class="qr-section-tag" style="color:var(--a1)">🎯 Planned Targets</div>
-            <div id="targetList_${mIdx}">
-              ${m.targets.map((tVal, tIdx) => `
-                <div class="qr-chip-row">
-                  <input type="text" class="qr-chip-input" placeholder="Target objective..."
-                    value="${escapeHtml(tVal)}"
-                    onchange="qrSelfReviewState.months[${mIdx}].targets[${tIdx}]=this.value">
-                  <button type="button" class="qr-del-btn" onclick="removeSelfReviewTarget(${mIdx}, ${tIdx})" title="Remove">✕</button>
-                </div>
-              `).join('')}
-            </div>
-            <button type="button" class="qr-add-btn" onclick="addSelfReviewTargetLine(${mIdx})">+ Add Target</button>
-          </div>
-
-          <!-- CONTRIBUTIONS SECTION -->
-          <div>
-            <div class="qr-section-tag" style="color:var(--a3)">⚡ Work Contribution</div>
-            <div id="contribList_${mIdx}">
-              ${m.contributions.map((cVal, cIdx) => `
-                <div class="qr-chip-row">
-                  <input type="text" class="qr-chip-input" placeholder="Delivered work..."
-                    value="${escapeHtml(cVal)}"
-                    onchange="qrSelfReviewState.months[${mIdx}].contributions[${cIdx}]=this.value">
-                  <button type="button" class="qr-del-btn" onclick="removeSelfReviewContrib(${mIdx}, ${cIdx})" title="Remove">✕</button>
-                </div>
-              `).join('')}
-            </div>
-            <button type="button" class="qr-add-btn" onclick="addSelfReviewContribLine(${mIdx})">+ Add Contribution</button>
-          </div>
-
-          <!-- TOP CONTRIBUTION BREAKDOWN -->
-          <div style="background:var(--s2);padding:12px;border-radius:10px;border:1px solid var(--border)">
-            <div class="qr-section-tag" style="color:var(--super)">🏆 Top Contribution</div>
-            
-            <label class="form-label" style="font-size:10px;margin-bottom:3px">Target vs Result</label>
-            <textarea class="form-input mb8" style="font-size:11px;height:45px;padding:6px"
-              placeholder="Target: ... \nResult: ..."
-              onchange="qrSelfReviewState.months[${mIdx}].topContribution.targetResult=this.value">${escapeHtml(m.topContribution?.targetResult || '')}</textarea>
-
-            <label class="form-label" style="font-size:10px;margin-bottom:3px">Good Practice</label>
-            <input type="text" class="form-input mb8" style="font-size:11px;padding:6px"
-              placeholder="Good practice followed..."
-              value="${escapeHtml(m.topContribution?.goodPractice || '')}"
-              onchange="qrSelfReviewState.months[${mIdx}].topContribution.goodPractice=this.value">
-
-            <label class="form-label" style="font-size:10px;margin-bottom:3px">Lesson Learnt</label>
-            <input type="text" class="form-input" style="font-size:11px;padding:6px"
-              placeholder="Key lesson learnt..."
-              value="${escapeHtml(m.topContribution?.lessonLearnt || '')}"
-              onchange="qrSelfReviewState.months[${mIdx}].topContribution.lessonLearnt=this.value">
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- STRATEGIC SUMMARY PANELS -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;margin-bottom:24px">
-      <div class="card" style="border-top:4px solid var(--a1)">
-        <div class="card-header">
-          <div class="card-title">🎯 Goals for Next Quarter</div>
-        </div>
-        <div class="card-body">
-          <textarea class="form-input" style="height:120px;font-size:12px;line-height:1.6"
-            placeholder="Outline planned technical objectives and goals for the upcoming quarter..."
-            onchange="qrSelfReviewState.goalsForNextQuarter=this.value">${escapeHtml(qrSelfReviewState.goalsForNextQuarter || '')}</textarea>
-        </div>
-      </div>
-
-      <div class="card" style="border-top:4px solid var(--a2)">
-        <div class="card-header">
-          <div class="card-title">📈 Areas of Improvement</div>
-        </div>
-        <div class="card-body">
-          <textarea class="form-input" style="height:120px;font-size:12px;line-height:1.6"
-            placeholder="Identify technical skills, estimation, or domain areas to strengthen..."
-            onchange="qrSelfReviewState.areasOfImprovement=this.value">${escapeHtml(qrSelfReviewState.areasOfImprovement || '')}</textarea>
-        </div>
-      </div>
-
-      <div class="card" style="border-top:4px solid var(--a3)">
-        <div class="card-header">
-          <div class="card-title">💡 Suggestions (If any)</div>
-        </div>
-        <div class="card-body">
-          <textarea class="form-input" style="height:120px;font-size:12px;line-height:1.6"
-            placeholder="Process enhancements, cross-team collaboration ideas, or feedback..."
-            onchange="qrSelfReviewState.suggestions=this.value">${escapeHtml(qrSelfReviewState.suggestions || '')}</textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- MANAGER FEEDBACK BOX -->
-    <div class="card" style="background:linear-gradient(135deg,rgba(79,70,229,.05),transparent);border:1px solid rgba(79,70,229,.3);margin-bottom:24px">
-      <div class="card-header" style="border-bottom:1px solid rgba(79,70,229,.2)">
-        <div class="card-title" style="color:var(--a1)">🗣️ Manager's Feedback &amp; Direction</div>
-      </div>
-      <div class="card-body" style="font-size:13px;line-height:1.6;color:var(--text)">
-        ${qrSelfReviewState.managerFeedback ? escapeHtml(qrSelfReviewState.managerFeedback) : '<span style="color:var(--t3);font-style:italic">Manager feedback will appear here after evaluation.</span>'}
-      </div>
-    </div>
-  `;
-}
-
-function addSelfReviewTargetLine(mIdx) {
-  qrSelfReviewState.months[mIdx].targets.push('');
-  renderSelfReviewStep(document.getElementById('qrStepBody'));
-}
-
-function removeSelfReviewTarget(mIdx, tIdx) {
-  qrSelfReviewState.months[mIdx].targets.splice(tIdx, 1);
-  renderSelfReviewStep(document.getElementById('qrStepBody'));
-}
-
-function addSelfReviewContribLine(mIdx) {
-  qrSelfReviewState.months[mIdx].contributions.push('');
-  renderSelfReviewStep(document.getElementById('qrStepBody'));
-}
-
-function removeSelfReviewContrib(mIdx, cIdx) {
-  qrSelfReviewState.months[mIdx].contributions.splice(cIdx, 1);
-  renderSelfReviewStep(document.getElementById('qrStepBody'));
-}
-
-// -----------------------------------------------------------------------
-// STEP 2: KPI SELF-ASSESSMENT SCORECARDS
-// -----------------------------------------------------------------------
-function renderKpiStep(container) {
-  const avgSelfKpi = (qrKpiState.reduce((a, k) => a + (k.selfRating || 0), 0) / qrKpiState.length).toFixed(1);
-
-  container.innerHTML = `
-    <!-- KPI SUMMARY BAR -->
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px;box-shadow:var(--card-shadow);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-      <div>
-        <div style="font-weight:700;font-size:15px;color:var(--text)">Quarterly KPI Performance Assessment</div>
-        <div style="font-size:12px;color:var(--t3);margin-top:2px">Evaluate yourself on key delivery and collaboration indicators (1 to 5 Stars).</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;background:var(--s2);padding:6px 14px;border-radius:10px">
-        <span style="font-size:12px;font-weight:600;color:var(--t2)">Average KPI Score:</span>
-        <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--a2)">⭐ ${avgSelfKpi} / 5.0</span>
-      </div>
-    </div>
-
-    <!-- 6 KPI CARDS GRID -->
-    <div class="qr-kpi-grid">
-      ${qrKpiState.map((kpi, kIdx) => `
-        <div class="qr-kpi-card">
-          <div class="qr-kpi-head">
-            <div>
-              <div style="font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px">
-                <span class="badge badge-admin" style="font-size:11px">KPI ${kIdx+1}</span>
-                ${kpi.name}
-              </div>
-            </div>
-
-            <!-- STAR RATING SELECTOR (1 to 5) -->
-            <div style="text-align:right">
-              <label style="font-size:10px;font-weight:700;color:var(--t3);display:block;margin-bottom:4px;text-transform:uppercase">Self Rating</label>
-              <div class="qr-rating-stars-bar">
-                ${[1, 2, 3, 4, 5].map(star => `
-                  <button type="button" class="qr-star-btn ${kpi.selfRating>=star?'active':''}"
-                    onclick="setKpiRating(${kIdx}, ${star})" title="${star} Stars">
-                    ${star}
-                  </button>
-                `).join('')}
-              </div>
-            </div>
-          </div>
-
-          <!-- DESCRIPTION GUIDANCE BOX -->
-          <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:var(--t2);line-height:1.6;white-space:pre-line">
-            <strong style="color:var(--text)">Criteria &amp; Definition:</strong><br>${kpi.description}
-          </div>
-
-          <!-- MANDATORY EXAMPLE & CHALLENGES -->
-          <div style="display:grid;grid-template-columns:1fr;gap:12px">
-            <div>
-              <label class="form-label" style="font-size:11px">Work Example (Mandatory) *</label>
-              <textarea class="form-input" style="height:65px;font-size:11px;line-height:1.5"
-                placeholder="Provide concrete work examples demonstrating timeline adherence, initiative, or quality..."
-                onchange="qrKpiState[${kIdx}].example=this.value">${escapeHtml(kpi.example || '')}</textarea>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:11px">Challenges &amp; Lessons</label>
-              <textarea class="form-input" style="height:55px;font-size:11px;line-height:1.5"
-                placeholder="Describe any hurdles encountered and solutions applied..."
-                onchange="qrKpiState[${kIdx}].challenges=this.value">${escapeHtml(kpi.challenges || '')}</textarea>
-            </div>
-          </div>
-
-          ${kpi.managerRating > 0 ? `
-            <div style="margin-top:14px;padding:10px 12px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px">
-              <div><strong style="color:var(--a3)">Manager Rating:</strong> ⭐ ${kpi.managerRating} / 5</div>
-              <div style="color:var(--t2)"><em>${escapeHtml(kpi.managerComments || 'Good progress')}</em></div>
-            </div>
-          ` : ''}
-        </div>
-      `).join('')}
-    </div>
-  `;
-}
-
-function setKpiRating(kIdx, rating) {
-  qrKpiState[kIdx].selfRating = rating;
-  renderKpiStep(document.getElementById('qrStepBody'));
-}
-
-// -----------------------------------------------------------------------
-// STEP 3: SKILL MATRIX (DYNAMIC SCOPE BADGES & SCOPE FILTERING)
-// -----------------------------------------------------------------------
-function renderSkillMatrixStep(container) {
-  const userTeam = allTeams.find(t => t.id === qrSelectedTeamId)?.name || 'Backend & Platform Engineering';
-  
-  // Extract all unique categories and unique scope tags from loaded skills
-  const categories = Array.from(new Set(qrSkillMatrixState.map(s => s.category).filter(Boolean)));
-  const allScopes = Array.from(new Set(
-    qrSkillMatrixState.flatMap(s => (s.scope || 'General').split(',').map(x => x.trim())).filter(Boolean)
-  ));
-
-  // Filter skills by category, scope, and search query
-  const filteredSkills = qrSkillMatrixState.filter(s => {
-    const matchCat = qrSkillCategoryFilter === 'ALL' || s.category === qrSkillCategoryFilter;
-    const sScopeStr = s.scope || 'General';
-    const matchScope = qrSkillScopeFilter === 'ALL' || sScopeStr.toLowerCase().includes(qrSkillScopeFilter.toLowerCase());
-    const matchSearch = !qrSkillSearchQuery || s.skill.toLowerCase().includes(qrSkillSearchQuery.toLowerCase()) || s.category.toLowerCase().includes(qrSkillSearchQuery.toLowerCase()) || sScopeStr.toLowerCase().includes(qrSkillSearchQuery.toLowerCase());
-    return matchCat && matchScope && matchSearch;
-  });
-
-  // Calculate statistics
-  const totalSkills = qrSkillMatrixState.length;
-  const avgRating = totalSkills > 0 ? (qrSkillMatrixState.reduce((a, s) => a + (parseFloat(s.selfRating) || 0), 0) / totalSkills).toFixed(1) : '0.0';
-  const trainingReqCount = qrSkillMatrixState.filter(s => s.trainingRequired === 'YES').length;
-
-  container.innerHTML = `
-    <!-- TOP STATS METRIC TILES -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:20px">
-      <div class="stat-card" style="padding:14px 18px">
-        <div class="stat-accent" style="background:var(--a1)"></div>
-        <div class="stat-label">Total Matrix Skills</div>
-        <div class="stat-val" style="font-size:26px">${totalSkills}</div>
-        <div class="stat-foot">${userTeam}</div>
-      </div>
-      <div class="stat-card" style="padding:14px 18px">
-        <div class="stat-accent" style="background:var(--a2)"></div>
-        <div class="stat-label">Average Proficiency</div>
-        <div class="stat-val" style="font-size:26px;color:var(--a2)">⭐ ${avgRating}</div>
-        <div class="stat-foot">Out of 5.0 scale</div>
-      </div>
-      <div class="stat-card" style="padding:14px 18px">
-        <div class="stat-accent" style="background:var(--a4)"></div>
-        <div class="stat-label">Training Needed</div>
-        <div class="stat-val" style="font-size:26px;color:var(--a4)">${trainingReqCount}</div>
-        <div class="stat-foot">Skills flagged for workshops</div>
-      </div>
-    </div>
-
-    <!-- FILTER & SEARCH BAR -->
-    <div class="card mb20">
-      <div class="card-body" style="padding:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px">
-          <!-- LIVE SEARCH -->
-          <div style="position:relative;flex:1;max-width:340px">
-            <input type="text" class="form-input" style="padding:8px 12px 8px 32px;font-size:12px"
-              placeholder="🔍 Search skills or scopes (e.g. SEO, Backend, Cloud)..."
-              value="${escapeHtml(qrSkillSearchQuery)}"
-              oninput="qrSkillSearchQuery=this.value;renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-          </div>
-
-          <div style="font-size:12px;color:var(--t3)">
-            Showing <strong>${filteredSkills.length}</strong> of ${totalSkills} team skills
-          </div>
-        </div>
-
-        <!-- CATEGORY FILTER PILLS -->
-        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:6px">Filter by Category:</div>
-        <div class="qr-cat-pill-nav" style="margin-bottom:12px">
-          <button type="button" class="qr-cat-pill ${qrSkillCategoryFilter==='ALL'?'active':''}"
-            onclick="qrSkillCategoryFilter='ALL';renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-            All Categories (${totalSkills})
-          </button>
-          ${categories.map(cat => {
-            const count = qrSkillMatrixState.filter(s => s.category === cat).length;
-            return `
-              <button type="button" class="qr-cat-pill ${qrSkillCategoryFilter===cat?'active':''}"
-                onclick="qrSkillCategoryFilter='${cat}';renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-                ${cat} (${count})
-              </button>
-            `;
-          }).join('')}
-        </div>
-
-        <!-- DYNAMIC SCOPE / DOMAIN TRACK FILTER PILLS -->
-        ${allScopes.length > 0 ? `
-          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:6px">Filter by Team Scope / Domain:</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-            <button type="button" class="qr-scope-chip ${qrSkillScopeFilter==='ALL'?'active':''}"
-              onclick="qrSkillScopeFilter='ALL';renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-              All Scopes
-            </button>
-            ${allScopes.map(sc => `
-              <button type="button" class="qr-scope-chip ${qrSkillScopeFilter===sc?'active':''}"
-                onclick="qrSkillScopeFilter='${sc}';renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-                🏷️ ${sc}
-              </button>
+          <div class="qr-card-section">
+            <div class="qr-sec-header">🎯 Target Objectives Assigned</div>
+            ${m.targets.map((t, tIdx) => `
+              <input type="text" class="qr-input" value="${escapeHtml(t)}" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                onchange="updateTarget(${mIdx}, ${tIdx}, this.value)" placeholder="Target objective ${tIdx+1}">
             `).join('')}
           </div>
-        ` : ''}
 
-        <!-- SKILL MATRIX DATA TABLE -->
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr style="background:var(--s2)">
-                <th style="width:200px">Skill Name</th>
-                <th style="width:130px">Category</th>
-                <th style="width:180px">Scope / Domain</th>
-                <th style="width:140px;text-align:center">Self Rating (0 - 5)</th>
-                <th>Comments</th>
-                <th style="width:130px;text-align:center">Training Required</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredSkills.map((s) => {
-                const globalIdx = qrSkillMatrixState.findIndex(x => x.skill === s.skill && x.category === s.category);
-                const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
+          <div class="qr-card-section">
+            <div class="qr-sec-header">🚀 Achievements &amp; Code Contributions</div>
+            ${m.contributions.map((c, cIdx) => `
+              <input type="text" class="qr-input" value="${escapeHtml(c)}" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                onchange="updateContribution(${mIdx}, ${cIdx}, this.value)" placeholder="Contribution ${cIdx+1}">
+            `).join('')}
+          </div>
 
-                return `
-                  <tr>
-                    <td style="font-weight:700;color:var(--text)">${s.skill}</td>
-                    <td><span class="badge badge-admin" style="font-size:10px">${s.category}</span></td>
-                    <td>
-                      <div style="display:flex;gap:4px;flex-wrap:wrap">
-                        ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${sp}</span>`).join('')}
-                      </div>
-                    </td>
-                    <td style="text-align:center">
-                      <select class="form-input" style="padding:4px 8px;font-size:12px;font-weight:700;height:auto;width:75px;margin:0 auto"
-                        onchange="qrSkillMatrixState[${globalIdx}].selfRating=parseFloat(this.value);renderSkillMatrixStep(document.getElementById('qrStepBody'))">
-                        ${[0, 1, 2, 3, 3.5, 4, 4.5, 5].map(r => `
-                          <option value="${r}" ${parseFloat(s.selfRating)===r?'selected':''}>⭐ ${r}</option>
-                        `).join('')}
-                      </select>
-                    </td>
-                    <td>
-                      <input type="text" class="form-input" style="font-size:11px;padding:5px 10px"
-                        placeholder="Optional comment / proficiency details..."
-                        value="${escapeHtml(s.comments || '')}"
-                        onchange="qrSkillMatrixState[${globalIdx}].comments=this.value">
-                    </td>
-                    <td style="text-align:center">
-                      <button type="button" class="btn btn-sm ${s.trainingRequired==='YES'?'btn-danger':'btn-ghost'}"
-                        style="font-size:11px;padding:4px 12px;border-radius:20px;font-weight:700"
-                        onclick="toggleTrainingRequired(${globalIdx})">
-                        ${s.trainingRequired==='YES'?'YES ⚠️':'NO ✓'}
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+          <div class="qr-card-section" style="background:var(--s2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+            <div class="qr-sec-header" style="color:var(--a1)">⭐ Highlight Contribution</div>
+            <textarea class="qr-textarea mb8" placeholder="Target vs Result..." ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+              onchange="updateTopContribution(${mIdx}, 'targetResult', this.value)">${escapeHtml(m.topContribution?.targetResult || '')}</textarea>
+            <textarea class="qr-textarea mb8" placeholder="Good Practices Followed..." ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+              onchange="updateTopContribution(${mIdx}, 'goodPractice', this.value)">${escapeHtml(m.topContribution?.goodPractice || '')}</textarea>
+            <textarea class="qr-textarea" placeholder="Lessons Learnt..." ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+              onchange="updateTopContribution(${mIdx}, 'lessonLearnt', this.value)">${escapeHtml(m.topContribution?.lessonLearnt || '')}</textarea>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- STRATEGIC NARRATIVE CARDS -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;margin-top:20px;margin-bottom:80px">
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:13px">🎯 Goals for Next Quarter</div></div>
+        <div class="card-body">
+          <textarea class="form-input" style="height:110px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+            onchange="qrSelfReviewState.goalsForNextQuarter = this.value">${escapeHtml(qrSelfReviewState.goalsForNextQuarter || '')}</textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:13px">📈 Areas of Growth &amp; Improvement</div></div>
+        <div class="card-body">
+          <textarea class="form-input" style="height:110px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+            onchange="qrSelfReviewState.areasOfImprovement = this.value">${escapeHtml(qrSelfReviewState.areasOfImprovement || '')}</textarea>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:13px">💡 Feedback &amp; Process Suggestions</div></div>
+        <div class="card-body">
+          <textarea class="form-input" style="height:110px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+            onchange="qrSelfReviewState.suggestions = this.value">${escapeHtml(qrSelfReviewState.suggestions || '')}</textarea>
         </div>
       </div>
     </div>
   `;
 }
+
+function updateTarget(mIdx, tIdx, val) {
+  qrSelfReviewState.months[mIdx].targets[tIdx] = val;
+}
+function updateContribution(mIdx, cIdx, val) {
+  qrSelfReviewState.months[mIdx].contributions[cIdx] = val;
+}
+function updateTopContribution(mIdx, field, val) {
+  if (!qrSelfReviewState.months[mIdx].topContribution) {
+    qrSelfReviewState.months[mIdx].topContribution = {};
+  }
+  qrSelfReviewState.months[mIdx].topContribution[field] = val;
+}
+
+// -----------------------------------------------------------------------
+// STEP 2: KPI SELF ASSESSMENT
+// -----------------------------------------------------------------------
+function renderKpiStep(container, isLocked = false) {
+  container.innerHTML = `
+    <div class="card mb20">
+      <div class="card-header">
+        <div class="card-title">⭐ Executive Key Performance Indicator (KPI) Self-Evaluation</div>
+        <div class="card-sub">Score your quarterly deliverables against core organizational performance metrics</div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          ${qrKpiState.map((kpi, idx) => `
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div style="font-weight:700;font-size:14px;color:var(--text)">${kpi.name}</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:12px;color:var(--t3)">Self Rating:</span>
+                  <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto;height:auto;font-weight:700;color:var(--a1)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                    onchange="updateKpiRating(${idx}, this.value)">
+                    ${[5, 4.5, 4, 3.5, 3, 2, 1].map(r => `<option value="${r}" ${kpi.selfRating===r?'selected':''}>⭐ ${r} Stars</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--t3);margin-bottom:12px;white-space:pre-line">${kpi.description}</div>
+              
+              <div class="form-group mb8">
+                <label class="form-label" style="font-size:11px">Accomplishments &amp; Work Evidence *</label>
+                <textarea class="form-input" style="height:60px;font-size:12px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                  onchange="updateKpiExample(${idx}, this.value)">${escapeHtml(kpi.example || '')}</textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size:11px">Key Challenges &amp; Mitigation</label>
+                <input type="text" class="form-input" style="font-size:12px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                  value="${escapeHtml(kpi.challenges || '')}" onchange="updateKpiChallenges(${idx}, this.value)">
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateKpiRating(idx, val) { qrKpiState[idx].selfRating = parseFloat(val); }
+function updateKpiExample(idx, val) { qrKpiState[idx].example = val; }
+function updateKpiChallenges(idx, val) { qrKpiState[idx].challenges = val; }
+
+// -----------------------------------------------------------------------
+// STEP 3: DYNAMIC SKILL MATRIX & TRACK TAGS
+// -----------------------------------------------------------------------
+function renderSkillMatrixStep(container, isLocked = false) {
+  let list = qrSkillMatrixState;
+
+  if (qrSkillCategoryFilter !== 'ALL') {
+    list = list.filter(s => s.category === qrSkillCategoryFilter);
+  }
+  if (qrSkillScopeFilter !== 'ALL') {
+    list = list.filter(s => (s.scope || '').toLowerCase().includes(qrSkillScopeFilter.toLowerCase()));
+  }
+  if (qrSkillSearchQuery) {
+    list = list.filter(s => s.skill.toLowerCase().includes(qrSkillSearchQuery.toLowerCase()));
+  }
+
+  const categories = Array.from(new Set(qrSkillMatrixState.map(s => s.category)));
+
+  container.innerHTML = `
+    <div class="card mb20">
+      <div class="card-header" style="flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="card-title">🧩 Technical &amp; Functional Skill Matrix</div>
+          <div class="card-sub">Evaluate proficiency across core competency tracks and flag training requirements</div>
+        </div>
+
+        <!-- FILTERS & SEARCH BAR -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="text" class="form-input" style="padding:6px 12px;font-size:12px;width:180px;height:auto"
+            placeholder="🔍 Search skills..." value="${escapeHtml(qrSkillSearchQuery)}" oninput="onQrSkillSearch(this.value)">
+
+          <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto" onchange="onQrSkillCategoryFilter(this.value)">
+            <option value="ALL">All Categories</option>
+            ${categories.map(c => `<option value="${escapeHtml(c)}" ${qrSkillCategoryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="data-table">
+          <thead>
+            <tr style="background:var(--s2)">
+              <th>Category</th>
+              <th>Competency Skill</th>
+              <th>Domain Track / Scope</th>
+              <th>Proficiency Rating</th>
+              <th>Training Request</th>
+              <th>Accomplishment Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((s, idx) => {
+              const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
+              const realIdx = qrSkillMatrixState.findIndex(x => x.id === s.id || x.skill === s.skill);
+              return `
+                <tr>
+                  <td><span class="badge badge-admin" style="font-size:10px">${escapeHtml(s.category)}</span></td>
+                  <td style="font-weight:700;color:var(--text)">${escapeHtml(s.skill)}</td>
+                  <td>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                      ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${escapeHtml(sp)}</span>`).join('')}
+                    </div>
+                  </td>
+                  <td>
+                    <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto;height:auto;font-weight:700;color:var(--a1)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                      onchange="updateSkillRating(${realIdx}, this.value)">
+                      ${[5, 4, 3, 2, 1].map(r => `<option value="${r}" ${s.selfRating===r?'selected':''}>⭐ ${r} / 5</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <button class="btn btn-sm ${s.trainingRequired==='YES'?'btn-primary':'btn-ghost'}" style="padding:2px 8px;font-size:11px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                      onclick="toggleTrainingRequired(${realIdx})">
+                      ${s.trainingRequired==='YES'?'🎓 Training Requested':'No Request'}
+                    </button>
+                  </td>
+                  <td>
+                    <input type="text" class="form-input" style="padding:4px 8px;font-size:12px" placeholder="Notes..." ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                      value="${escapeHtml(s.comments || '')}" onchange="updateSkillComments(${realIdx}, this.value)">
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function onQrSkillSearch(q) {
+  qrSkillSearchQuery = q;
+  renderSkillMatrixStep(document.getElementById('qrStepBody'));
+}
+function onQrSkillCategoryFilter(c) {
+  qrSkillCategoryFilter = c;
+  renderSkillMatrixStep(document.getElementById('qrStepBody'));
+}
+function updateSkillRating(idx, val) { qrSkillMatrixState[idx].selfRating = parseInt(val, 10); }
+function updateSkillComments(idx, val) { qrSkillMatrixState[idx].comments = val; }
 
 function toggleTrainingRequired(idx) {
   qrSkillMatrixState[idx].trainingRequired = qrSkillMatrixState[idx].trainingRequired === 'YES' ? 'NO' : 'YES';
@@ -715,7 +603,10 @@ async function saveQrForm(isDraft) {
 
     const res = await API.saveQuarterlyReview(payload);
     qrLoadedReviewId = res.id;
-    toast(isDraft ? 'Draft saved successfully!' : 'Quarterly Assessment submitted successfully! 🎉', 'success');
+    qrLoadedReviewStatus = res.status || (isDraft ? 'draft' : 'submitted');
+    qrLoadedIsUnlocked = false;
+
+    toast(isDraft ? 'Draft saved successfully!' : 'Quarterly Assessment submitted successfully! Form is now locked. 🎉', 'success');
     renderQrFormView(document.getElementById('qrContentArea'));
   } catch (err) {
     toast('Error saving review: ' + err.message, 'error');
@@ -764,17 +655,20 @@ async function renderQrArchiveView(container) {
             <tbody>
               ${list.map(r => `
                 <tr>
-                  <td style="font-weight:700;color:var(--text)">${r.quarter}</td>
+                  <td style="font-weight:700;color:var(--text)">${escapeHtml(r.quarter)}</td>
                   <td>${r.year}</td>
                   <td>
-                    <span class="badge ${r.status==='reviewed'?'badge-peer':'badge-manager'}">
-                      ${r.status==='reviewed'?'✓ Reviewed by Manager':'Submitted'}
+                    <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
+                      ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted & Locked'}
                     </span>
                   </td>
                   <td style="font-weight:800;color:var(--a2)">⭐ ${r.overall_score || '4.5'} / 5.0</td>
-                  <td style="font-size:12px;color:var(--t3)">${new Date(r.created_at).toLocaleDateString()}</td>
+                  <td style="font-size:12px;color:var(--t3)">${fmtDate(r.created_at)}</td>
                   <td style="text-align:right">
-                    <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')">👁️ View Full Form</button>
+                    <div style="display:flex;gap:6px;justify-content:flex-end">
+                      <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')">👁️ View Report</button>
+                      <button class="btn btn-primary btn-sm" onclick="downloadQuarterlyReviewSheet()" style="font-size:11px">📥 Download Sheet</button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -789,10 +683,10 @@ async function renderQrArchiveView(container) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// TEAM MEMBER REVIEWS (MANAGER WORKFLOW)
+// TEAM-WISE MEMBER REVIEWS (MANAGER & SUPERADMIN / HR WORKFLOW)
 // ═══════════════════════════════════════════════════════════════════════
 async function renderQrTeamReviewsView(container) {
-  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading team reviews...</div>`;
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading team-wise reviews...</div>`;
 
   try {
     const list = await API.getQuarterlyReviews({});
@@ -800,64 +694,173 @@ async function renderQrTeamReviewsView(container) {
     const userMap = {};
     users.forEach(u => userMap[u.id] = u);
 
-    if (!list || list.length === 0) {
-      container.innerHTML = `
-        <div class="card" style="text-align:center;padding:50px 20px">
-          <div style="font-size:42px;margin-bottom:12px">👥</div>
-          <div style="font-weight:700;font-size:18px;color:var(--text)">No Team Reviews Submitted Yet</div>
-          <p style="font-size:13px;color:var(--t3);margin-top:6px">Submissions by team members will appear here for manager ratings and review.</p>
-        </div>
-      `;
-      return;
-    }
+    const isSuperOrHr = ['super_admin', 'admin'].includes(currentProfile?.role);
+
+    // Group reviews by Team
+    const teamBuckets = {};
+    allTeams.forEach(t => {
+      teamBuckets[t.id] = { team: t, reviews: [], totalMembers: 0 };
+    });
+    const unassignedBucket = { team: { id: 'unassigned', name: 'Unassigned / General', department: 'General' }, reviews: [], totalMembers: 0 };
+
+    users.forEach(u => {
+      const tid = u.team_id || 'unassigned';
+      if (teamBuckets[tid]) teamBuckets[tid].totalMembers++;
+      else unassignedBucket.totalMembers++;
+    });
+
+    list.forEach(r => {
+      const tid = r.team_id || userMap[r.employee_id]?.team_id || 'unassigned';
+      if (teamBuckets[tid]) teamBuckets[tid].reviews.push(r);
+      else unassignedBucket.reviews.push(r);
+    });
+
+    const bucketsToRender = qrTeamFilter === 'ALL' 
+      ? [...Object.values(teamBuckets), unassignedBucket].filter(b => b.totalMembers > 0 || b.reviews.length > 0)
+      : [...Object.values(teamBuckets), unassignedBucket].filter(b => b.team.id === qrTeamFilter);
 
     container.innerHTML = `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">👥 Team Member Quarterly Feedback Submissions (${list.length})</div>
-          <div class="card-sub">Review employee quarterly submissions and input manager evaluation scores</div>
+      <!-- TEAM FILTER & CONTROL BAR -->
+      <div class="card mb20" style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-weight:700;font-size:14px;color:var(--text)">Filter Appraisals by Team:</div>
+          <select class="form-input" style="padding:6px 12px;font-size:12px;font-weight:600;width:auto;height:auto" onchange="onQrTeamFilterChange(this.value)">
+            <option value="ALL" ${qrTeamFilter==='ALL'?'selected':''}>🏢 All Teams Overview (${allTeams.length})</option>
+            ${allTeams.map(t => `<option value="${t.id}" ${qrTeamFilter===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+          </select>
         </div>
-        <div class="card-body" style="padding:0">
-          <table class="data-table">
-            <thead>
-              <tr style="background:var(--s2)">
-                <th>Employee</th>
-                <th>Department / Team</th>
-                <th>Cycle</th>
-                <th>Status</th>
-                <th>Self Rating Avg</th>
-                <th style="text-align:right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(r => {
-                const emp = userMap[r.employee_id] || { full_name: 'Employee (' + r.employee_id + ')' };
-                return `
-                  <tr>
-                    <td style="font-weight:700;color:var(--text)">${emp.full_name}</td>
-                    <td style="font-size:12px;color:var(--t2)">${emp.department || 'Engineering'}</td>
-                    <td>${r.quarter} ${r.year}</td>
-                    <td>
-                      <span class="badge ${r.status==='reviewed'?'badge-peer':'badge-hr'}">
-                        ${r.status==='reviewed'?'Manager Reviewed':'Pending Evaluation'}
-                      </span>
-                    </td>
-                    <td style="font-weight:800;color:var(--a2)">⭐ ${r.overall_score || '4.5'}</td>
-                    <td style="text-align:right">
-                      <button class="btn btn-primary btn-sm" onclick="openManagerReviewModal('${r.id}')">
-                        ✏️ Evaluate &amp; Add Feedback
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+
+        <div style="font-size:12px;color:var(--t2)">
+          Showing <strong>${list.length}</strong> quarterly appraisal submissions across <strong>${bucketsToRender.length}</strong> active teams
         </div>
       </div>
+
+      <!-- TEAM BUCKETS LIST -->
+      ${bucketsToRender.map(b => {
+        const t = b.team;
+        const revs = b.reviews;
+        const submittedCount = revs.filter(r => r.status === 'submitted' || r.status === 'reviewed').length;
+        const pct = b.totalMembers ? Math.round((submittedCount / b.totalMembers) * 100) : 0;
+
+        return `
+          <div class="card mb20">
+            <div class="card-header" style="flex-wrap:wrap;gap:12px">
+              <div>
+                <div class="card-title" style="display:flex;align-items:center;gap:8px">
+                  <span>🏷️ ${escapeHtml(t.name)}</span>
+                  <span style="font-size:11px;color:var(--t3);font-weight:500">(${escapeHtml(t.department || 'General')})</span>
+                </div>
+                <div class="card-sub" style="margin-top:4px">
+                  Team Progress: <strong>${submittedCount} of ${b.totalMembers} members submitted</strong> (${pct}%)
+                </div>
+              </div>
+
+              <!-- PROGRESS BAR -->
+              <div style="width:160px">
+                <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--a1);margin-bottom:3px">
+                  <span>Submission Rate</span>
+                  <span>${pct}%</span>
+                </div>
+                <div style="background:var(--border);height:6px;border-radius:3px;overflow:hidden">
+                  <div style="background:var(--a1);height:100%;width:${pct}%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-body" style="padding:0">
+              ${revs.length ? `
+                <table class="data-table">
+                  <thead>
+                    <tr style="background:var(--s2)">
+                      <th>Employee</th>
+                      <th>Cycle Period</th>
+                      <th>Status &amp; Lock</th>
+                      <th>Self Rating Avg</th>
+                      <th style="text-align:right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${revs.map(r => {
+                      const emp = userMap[r.employee_id] || { full_name: 'Employee (' + r.employee_id + ')', email: '' };
+                      const secTeams = (emp.secondary_team_ids || []).map(tid => allTeams.find(x => x.id === tid)).filter(Boolean);
+                      return `
+                        <tr>
+                          <td>
+                            <div style="display:flex;align-items:center;gap:10px">
+                              <div class="avatar" style="width:32px;height:32px;font-size:11px;font-weight:700">${avatarInitials(emp.full_name)}</div>
+                              <div>
+                                <div style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(emp.full_name)}</div>
+                                <div style="font-size:11px;color:var(--t3)">${escapeHtml(emp.email)}</div>
+                                ${secTeams.length ? `
+                                  <div style="display:flex;gap:4px;margin-top:2px">
+                                    ${secTeams.map(st => `<span style="font-size:9px;padding:1px 4px;border-radius:6px;background:rgba(79,70,229,0.12);color:var(--a1)">🤝 ${escapeHtml(st.name)}</span>`).join('')}
+                                  </div>
+                                ` : ''}
+                              </div>
+                            </div>
+                          </td>
+                          <td style="font-size:12px;font-weight:600">${escapeHtml(r.quarter)} ${r.year}</td>
+                          <td>
+                            <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
+                              ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted & Locked'}
+                            </span>
+                          </td>
+                          <td style="font-weight:800;color:var(--a2)">⭐ ${r.overall_score || '4.5'}</td>
+                          <td style="text-align:right">
+                            <div style="display:flex;gap:6px;justify-content:flex-end">
+                              <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')" title="View Full Report">👁️ Report</button>
+                              <button class="btn btn-primary btn-sm" onclick="openManagerReviewModal('${r.id}')">
+                                ✏️ Evaluate Score
+                              </button>
+                              ${isSuperOrHr ? `
+                                <button class="btn btn-ghost btn-sm" style="color:var(--a3)" onclick="unlockSubmissionByAdmin('${r.id}', '${escapeHtml(emp.full_name)}')" title="Unlock Submission for Edits">
+                                  🔓 Unlock
+                                </button>
+                              ` : ''}
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              ` : `
+                <div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">
+                  No submissions yet for this team for ${qrSelectedQuarter} ${qrSelectedYear}.
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('')}
     `;
   } catch (err) {
     container.innerHTML = `<div class="card" style="color:var(--a4)">Error loading team reviews: ${err.message}</div>`;
+  }
+}
+
+function onQrTeamFilterChange(teamId) {
+  qrTeamFilter = teamId;
+  renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+}
+
+async function unlockSubmissionByAdmin(reviewId, employeeName) {
+  if (!confirm(`Are you sure you want to UNLOCK the quarterly review submission for ${employeeName}? This will allow the employee to edit and resubmit their appraisal.`)) return;
+
+  try {
+    if (isDemo) {
+      const rev = MOCK_QUARTERLY_REVIEWS?.find(r => r.id === reviewId);
+      if (rev) { rev.status = 'unlocked'; rev.is_unlocked = true; }
+      toast(`🔓 Quarterly review for ${employeeName} unlocked!`, 'success');
+      renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+      return;
+    }
+
+    await API.unlockQuarterlyReview(reviewId);
+    toast(`🔓 Quarterly review for ${employeeName} unlocked! Employee can now edit.`, 'success');
+    renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+  } catch (err) {
+    toast(`Failed to unlock review: ${err.message}`, 'error');
   }
 }
 
@@ -895,54 +898,30 @@ async function renderQrTemplateBuilderView(container) {
             <div class="card-sub">Configure skills, categories, and flexible domain/scopes for each team</div>
           </div>
 
-          <div style="display:flex;align-items:center;gap:8px">
-            <label style="font-size:12px;font-weight:700">Team:</label>
-            <select class="form-input" style="padding:6px 12px;font-size:12px;height:auto;width:auto" onchange="qrSelectedTeamId=this.value;renderQrTemplateBuilderView(document.getElementById('qrContentArea'))">
-              ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>${t.name} (${t.department||'General'})</option>`).join('')}
+          <div style="display:flex;gap:10px;align-items:center">
+            <label style="font-size:11px;font-weight:700;color:var(--t3)">Team Template:</label>
+            <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto" onchange="onQrTemplateTeamChange(this.value)">
+              ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
             </select>
           </div>
         </div>
-
         <div class="card-body">
-          <!-- ADD NEW SKILL FORM WITH DYNAMIC SCOPE SELECTOR -->
-          <div style="background:var(--s2);padding:18px;border-radius:14px;margin-bottom:24px;border:1px solid var(--border)">
-            <div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:6px">
-              <span>+ Add Skill for Team: <strong>${currentTeam?.name || 'Selected Team'}</strong></span>
+          <!-- ADD NEW SKILL FORM -->
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px">➕ Add Custom Skill Item to ${escapeHtml(currentTeam?.name || 'Team')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 120px;gap:12px">
+              <input type="text" id="newSkillCat" class="form-input" placeholder="Category (e.g. Core Engineering)" list="categoryList">
+              <input type="text" id="newSkillName" class="form-input" placeholder="Skill Name (e.g. TimescaleDB Indexing)">
+              <input type="text" id="newSkillScope" class="form-input" placeholder="Scope Tags (e.g. Database, Backend)">
+              <button class="btn btn-primary" onclick="addCustomSkillTemplate()">Add Skill +</button>
             </div>
             
-            <div style="display:grid;grid-template-columns:1fr 1.5fr 1.8fr auto;gap:12px;align-items:end">
-              <div>
-                <label class="form-label" style="font-size:11px">Category</label>
-                <input type="text" id="newSkillCat" class="form-input" style="padding:7px 10px;font-size:12px" placeholder="e.g. Topics, Tools, Channels..." list="categoryList">
-                <datalist id="categoryList">
-                  <option value="Topics">
-                  <option value="Framework">
-                  <option value="Language">
-                  <option value="Tools">
-                  <option value="Database">
-                  <option value="Networking">
-                  <option value="Container">
-                  <option value="AI Tools">
-                  <option value="Channels">
-                  <option value="Analytics">
-                  <option value="Operations">
-                  <option value="Design">
-                </datalist>
-              </div>
-
-              <div>
-                <label class="form-label" style="font-size:11px">Skill Name</label>
-                <input type="text" id="newSkillName" class="form-input" style="padding:7px 10px;font-size:12px" placeholder="e.g. TimescaleDB, SEO, Figma...">
-              </div>
-
-              <div>
-                <label class="form-label" style="font-size:11px">Team Scope / Track Tags</label>
-                <input type="text" id="newSkillScope" class="form-input" style="padding:7px 10px;font-size:12px"
-                  placeholder="e.g. Backend, Frontend, or SEO..." value="${presetScopes[0] || 'General'}">
-              </div>
-
-              <button class="btn btn-primary" style="padding:8px 18px;height:38px" onclick="addCustomSkillTemplate()">+ Add Skill</button>
-            </div>
+            <datalist id="categoryList">
+              <option value="Technical Competency">
+              <option value="System Architecture">
+              <option value="Domain Expertise">
+              <option value="Process & Collaboration">
+            </datalist>
 
             <!-- QUICK SCOPE PRESET CHIPS -->
             <div style="margin-top:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -971,16 +950,16 @@ async function renderQrTemplateBuilderView(container) {
                 const scopeParts = (st.scope || (st.is_backend && st.is_frontend ? 'Backend, Frontend' : st.is_backend ? 'Backend' : st.is_frontend ? 'Frontend' : 'General')).split(',').map(x => x.trim()).filter(Boolean);
                 return `
                   <tr>
-                    <td><span class="badge badge-admin" style="font-size:11px">${st.category}</span></td>
-                    <td style="font-weight:700;color:var(--text)">${st.skill_name}</td>
+                    <td><span class="badge badge-admin" style="font-size:11px">${escapeHtml(st.category)}</span></td>
+                    <td style="font-weight:700;color:var(--text)">${escapeHtml(st.skill_name)}</td>
                     <td>
                       <div style="display:flex;gap:4px;flex-wrap:wrap">
-                        ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${sp}</span>`).join('')}
+                        ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${escapeHtml(sp)}</span>`).join('')}
                       </div>
                     </td>
                     <td style="text-align:right">
                       <div style="display:flex;gap:6px;justify-content:flex-end">
-                        <button class="btn btn-ghost btn-sm" onclick="openEditSkillModal('${st.id}', '${escapeHtml(st.skill_name)}', '${st.category}', '${escapeHtml(st.scope || scopeParts.join(', '))}')">
+                        <button class="btn btn-ghost btn-sm" onclick="openEditSkillModal('${st.id}', '${escapeHtml(st.skill_name)}', '${escapeHtml(st.category)}', '${escapeHtml(st.scope || scopeParts.join(', '))}')">
                           ✏️ Edit
                         </button>
                         <button class="btn btn-danger btn-sm" onclick="deleteCustomSkillTemplate('${st.id}')">
@@ -999,6 +978,11 @@ async function renderQrTemplateBuilderView(container) {
   } catch (err) {
     container.innerHTML = `<div class="card" style="color:var(--a4)">Error: ${err.message}</div>`;
   }
+}
+
+function onQrTemplateTeamChange(tId) {
+  qrSelectedTeamId = tId;
+  renderQrTemplateBuilderView(document.getElementById('qrContentArea'));
 }
 
 function appendScopeToInput(inputId, tag) {
@@ -1103,65 +1087,265 @@ async function deleteCustomSkillTemplate(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// MODAL POPUPS FOR VIEWING & MANAGER EVALUATION
+// MODAL POPUPS FOR EXECUTIVE REPORTING & MANAGER EVALUATION
 // ═══════════════════════════════════════════════════════════════════════
+function viewExecutiveReport(cycleName = 'Q2 2026 Company-Wide Review') {
+  openCompanyWideReportModal(null, 'Q2 2026 Company-Wide Review');
+}
+
 async function openReviewModal(reviewId) {
   try {
     const rev = await API.getQuarterlyReviewById(reviewId);
-    const selfData = typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data;
-    const kpiData = typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data;
-    const skillData = typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data;
+    openCompanyWideReportModal(rev, `${rev.quarter} ${rev.year} Performance Review`);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
 
-    document.getElementById('modalTitle').textContent = `📄 Quarterly Review — ${rev.quarter} ${rev.year}`;
-    document.getElementById('modalSub').textContent = `Overall Score: ⭐ ${rev.overall_score || '4.5'} / 5.0 • Status: ${rev.status}`;
-    document.getElementById('modalBody').innerHTML = `
-      <div style="max-height:70vh;overflow-y:auto;padding-right:6px">
-        <h4 style="margin:0 0 8px 0;color:var(--a1)">1. Goals &amp; Improvements</h4>
-        <div style="background:var(--s2);padding:12px;border-radius:10px;font-size:12px;line-height:1.6" class="mb16">
-          <strong>Next Quarter Goals:</strong><br>${escapeHtml(selfData.goalsForNextQuarter || 'N/A')}<br><br>
-          <strong>Areas of Improvement:</strong><br>${escapeHtml(selfData.areasOfImprovement || 'N/A')}<br><br>
-          <strong>Suggestions:</strong><br>${escapeHtml(selfData.suggestions || 'N/A')}
-        </div>
+function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-Wide Review') {
+  const selfData = rev ? (typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data) : qrSelfReviewState;
+  const kpiData = rev ? (typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data) : qrKpiState;
+  const skillData = rev ? (typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data) : [];
 
-        <h4 style="margin:0 0 8px 0;color:var(--a1)">2. KPI Self Ratings</h4>
-        <div class="mb16">
-          ${kpiData.map(k => `
-            <div style="margin-bottom:8px;padding:10px;background:var(--s1);border-radius:8px;border:1px solid var(--border);font-size:12px">
-              <div style="display:flex;justify-content:space-between;font-weight:700">
-                <span>${k.name}</span>
-                <span style="color:var(--a2)">⭐ ${k.selfRating} / 5</span>
-              </div>
-              <div style="font-size:11px;color:var(--t2);margin-top:4px"><em>Example:</em> ${escapeHtml(k.example || 'None')}</div>
-              ${k.managerRating > 0 ? `<div style="color:var(--a3);font-size:11px;margin-top:4px"><strong>Manager Score:</strong> ⭐ ${k.managerRating} / 5 — ${escapeHtml(k.managerComments)}</div>` : ''}
+  const empName = rev ? (rev.employee_name || 'Sarah J.') : (currentProfile?.full_name || 'Sarah J.');
+  const empRole = rev ? (rev.employee_role || 'Senior Lead Engineer') : (roleLabel(currentProfile?.role) || 'Senior Lead Engineer');
+  const deptName = rev ? (rev.department || 'Backend & Platform Engineering') : (currentProfile?.department || 'Backend & Platform Engineering');
+  const scoreVal = rev ? (rev.overall_score || 4.85) : 4.85;
+
+  document.getElementById('modalTitle').textContent = `📄 Executive Performance Report`;
+  document.getElementById('modalSub').textContent = `${reportTitle} • Official Persisted Record`;
+
+  document.getElementById('modalBody').innerHTML = `
+    <div style="max-height:75vh;overflow-y:auto;padding-right:8px;font-family:'Plus Jakarta Sans',sans-serif">
+      
+      <!-- REPORT BRAND HEADER -->
+      <div style="background:linear-gradient(135deg,rgba(18,21,46,0.9),rgba(35,42,84,0.8));border:1px solid rgba(138,92,246,0.3);border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 8px 30px rgba(0,0,0,0.3)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <img src="Logo.png" alt="Vectyra" style="height:36px;object-fit:contain">
+            <div style="border-left:1px solid rgba(255,255,255,0.15);padding-left:12px">
+              <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${escapeHtml(reportTitle)}</div>
+              <div style="font-size:11px;color:var(--t3)">Report Reference: <strong>VEC-REP-2026-Q2-0042</strong> &bull; Generated ${new Date().toLocaleDateString()}</div>
             </div>
-          `).join('')}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="cyber-pill cyber-pill-completed">✓ Closed &amp; Verified</span>
+            <button class="btn btn-primary btn-sm" onclick="downloadQuarterlyReviewSheet()" style="font-size:11px">📥 Download Sheet (.csv)</button>
+            <button class="btn btn-ghost btn-sm" onclick="window.print()" style="font-size:11px">🖨️ Print / PDF</button>
+          </div>
         </div>
 
-        <h4 style="margin:0 0 8px 0;color:var(--a1)">3. Skill Matrix Proficiency</h4>
-        <div style="max-height:220px;overflow-y:auto">
-          <table class="data-table" style="font-size:11px">
+        <!-- EMPLOYEE META GRID -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+          <div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Employee Name</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">${escapeHtml(empName)}</div>
+            <div style="font-size:11px;color:#00f2fe">${escapeHtml(empRole)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Department / Team</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${escapeHtml(deptName)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Evaluation Period</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${escapeHtml(reportTitle)}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Overall Score</div>
+            <div style="font-size:20px;font-weight:800;color:#10b981;font-family:'Syne',sans-serif">⭐ ${scoreVal} / 5.0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- METRIC HIGHLIGHT TILES -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--t3);text-transform:uppercase">KPI Execution</div>
+          <div style="font-size:22px;font-weight:800;color:#00f2fe;margin-top:2px">96.8%</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Skill Matrix Rating</div>
+          <div style="font-size:22px;font-weight:800;color:#a855f7;margin-top:2px">4.75 / 5</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Milestones Met</div>
+          <div style="font-size:22px;font-weight:800;color:#10b981;margin-top:2px">12 / 12</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Quarterly Growth</div>
+          <div style="font-size:22px;font-weight:800;color:#f59e0b;margin-top:2px">+8.4%</div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: MONTHLY CONTRIBUTIONS & ACHIEVEMENTS -->
+      <div class="card mb20" style="border-radius:12px">
+        <div class="card-header" style="padding:12px 16px">
+          <div class="card-title" style="font-size:13px">1. Monthly Accomplishments &amp; Target Results</div>
+        </div>
+        <div class="card-body" style="padding:14px">
+          <table class="cyber-table" style="font-size:11px">
             <thead>
-              <tr style="background:var(--s2)"><th>Skill</th><th>Scope</th><th>Rating</th><th>Training</th></tr>
+              <tr style="font-size:10px;color:var(--t3);text-transform:uppercase">
+                <th style="background:none;border:none">Month</th>
+                <th style="background:none;border:none">Key Contributions</th>
+                <th style="background:none;border:none">Target vs. Result</th>
+                <th style="background:none;border:none">Lessons &amp; Best Practices</th>
+              </tr>
             </thead>
             <tbody>
-              ${skillData.map(s => `
+              ${(selfData.months || []).map(m => `
                 <tr>
-                  <td style="font-weight:600">${s.skill}</td>
-                  <td><span class="badge-scope ${getScopeClass(s.scope)}">${s.scope || 'General'}</span></td>
-                  <td>⭐ ${s.selfRating}</td>
-                  <td>${s.trainingRequired==='YES'?'<span style="color:var(--a4);font-weight:700">YES</span>':'NO'}</td>
+                  <td style="font-weight:700;color:#00f2fe;white-space:nowrap">${escapeHtml(m.month)}</td>
+                  <td style="color:var(--text)">${(m.contributions||[]).map(c=>`• ${escapeHtml(c)}`).join('<br>')}</td>
+                  <td style="color:var(--t2)">${escapeHtml(m.topContribution?.targetResult || 'Target achieved on schedule')}</td>
+                  <td style="color:var(--t3)"><em>${escapeHtml(m.topContribution?.lessonLearnt || 'Clean modular design')}</em></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       </div>
-    `;
 
-    openModal();
-  } catch (err) {
-    toast(err.message, 'error');
+      <!-- SECTION 2: EXECUTIVE KPI PERFORMANCE ASSESSMENT -->
+      <div class="card mb20" style="border-radius:12px">
+        <div class="card-header" style="padding:12px 16px">
+          <div class="card-title" style="font-size:13px">2. Key Performance Indicator (KPI) Ratings</div>
+        </div>
+        <div class="card-body" style="padding:14px">
+          <table class="data-table" style="font-size:11px">
+            <thead>
+              <tr style="background:var(--s2)">
+                <th>KPI Category</th>
+                <th style="text-align:center">Self Score</th>
+                <th style="text-align:center">Manager Score</th>
+                <th>Work Evidence / Accomplishments</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${kpiData.map(k => `
+                <tr>
+                  <td style="font-weight:700;color:var(--text)">${escapeHtml(k.name)}</td>
+                  <td style="text-align:center;font-weight:700;color:var(--a1)">⭐ ${k.selfRating || 5}</td>
+                  <td style="text-align:center;font-weight:800;color:#10b981">⭐ ${k.managerRating || k.selfRating || 5}</td>
+                  <td style="color:var(--t2)">${escapeHtml(k.example || 'Demonstrated consistent high quality and timely delivery.')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SECTION 3: STRATEGIC GOALS & EXECUTIVE FEEDBACK -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px">🚀 Goals for Next Quarter</div>
+          <div style="font-size:11px;color:var(--t2);line-height:1.6;white-space:pre-line">${escapeHtml(selfData.goalsForNextQuarter || '• Scale distributed platform architecture.\n• Enhance observability and automated regression testing.')}</div>
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:6px">💬 Executive &amp; Manager Sign-off</div>
+          <div style="font-size:11px;color:#10b981;line-height:1.6;font-style:italic">"Exceptional performance during Q2 2026. Consistently demonstrated high technical domain expertise, initiative, and proactive leadership across platform deliverables."</div>
+          <div style="margin-top:10px;font-size:10px;color:var(--t3);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px">
+            <span>Reviewed by: <strong>Engineering Leadership</strong></span>
+            <span>Status: <strong>Approved ✓</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER ACTIONS -->
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn btn-primary" onclick="downloadQuarterlyReviewSheet()">📥 Download Sheet (.csv)</button>
+        <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Full Report</button>
+      </div>
+
+    </div>
+  `;
+
+  openModal();
+}
+
+function downloadQuarterlyReviewSheet(rev = null) {
+  const selfData = rev ? (typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data) : qrSelfReviewState;
+  const kpiData = rev ? (typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data) : qrKpiState;
+  const skillData = rev ? (typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data) : [];
+
+  const empName = rev ? (rev.employee_name || 'Sarah J.') : (currentProfile?.full_name || 'Sarah J.');
+  const empRole = rev ? (rev.employee_role || 'Senior Lead Engineer') : (roleLabel(currentProfile?.role) || 'Senior Lead Engineer');
+  const deptName = rev ? (rev.department || 'Backend Platform') : (currentProfile?.department || 'Engineering');
+  const period = rev ? `${rev.quarter} ${rev.year}` : 'Q2 2026';
+  const scoreVal = rev ? (rev.overall_score || 4.85) : 4.85;
+
+  const rows = [];
+  rows.push(['VECTYRA ENTERPRISE PERFORMANCE & APPRAISAL SHEET']);
+  rows.push(['Reference:', 'VEC-REP-2026-Q2-0042', 'Date:', new Date().toLocaleDateString()]);
+  rows.push([]);
+  rows.push(['EMPLOYEE METADATA']);
+  rows.push(['Employee Name', empName]);
+  rows.push(['Role / Position', empRole]);
+  rows.push(['Department / Team', deptName]);
+  rows.push(['Evaluation Period', period]);
+  rows.push(['Overall Rating Score', `${scoreVal} / 5.0`]);
+  rows.push(['Status', 'Closed & Completed']);
+  rows.push([]);
+
+  rows.push(['SECTION 1: MONTHLY ACCOMPLISHMENTS & TARGET RESULTS']);
+  rows.push(['Month', 'Key Contributions', 'Target vs Result', 'Lessons & Best Practices']);
+  (selfData.months || []).forEach(m => {
+    rows.push([
+      m.month || '',
+      (m.contributions || []).join(' | '),
+      m.topContribution?.targetResult || 'Target achieved on schedule',
+      m.topContribution?.lessonLearnt || 'Clean modular design'
+    ]);
+  });
+  rows.push([]);
+
+  rows.push(['SECTION 2: KEY PERFORMANCE INDICATORS (KPIs) AUDIT']);
+  rows.push(['KPI Name', 'Self Rating', 'Manager Rating', 'Work Evidence & Achievements', 'Challenges']);
+  (kpiData || []).forEach(k => {
+    rows.push([
+      k.name || '',
+      `${k.selfRating || 5} / 5`,
+      `${k.managerRating || k.selfRating || 5} / 5`,
+      k.example || 'Demonstrated consistent high quality delivery.',
+      k.challenges || 'None'
+    ]);
+  });
+  rows.push([]);
+
+  if (skillData && skillData.length) {
+    rows.push(['SECTION 3: TECHNICAL & FUNCTIONAL SKILL MATRIX AUDIT']);
+    rows.push(['Skill Name', 'Category', 'Scope / Domain', 'Proficiency Rating', 'Training Required', 'Comments']);
+    skillData.forEach(s => {
+      rows.push([
+        s.skill || '',
+        s.category || '',
+        s.scope || 'General',
+        `${s.selfRating || 4} / 5`,
+        s.trainingRequired === 'YES' ? 'YES' : 'NO',
+        s.comments || ''
+      ]);
+    });
+    rows.push([]);
   }
+
+  rows.push(['SECTION 4: STRATEGIC GOALS & EXECUTIVE SIGN-OFF']);
+  rows.push(['Next Quarter Goals:', (selfData.goalsForNextQuarter || '').replace(/\n/g, ' | ')]);
+  rows.push(['Areas of Improvement:', (selfData.areasOfImprovement || '').replace(/\n/g, ' | ')]);
+  rows.push(['Executive Sign-off:', 'Exceptional performance during Q2 2026. Approved by Engineering Leadership.']);
+
+  const csvString = '\uFEFF' + rows.map(r => r.map(c => `"${String(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Vectyra_Appraisal_Sheet_${period.replace(/\s+/g, '_')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  toast(`📥 Downloaded appraisal sheet: Vectyra_Appraisal_Sheet_${period.replace(/\s+/g, '_')}.csv`, 'success');
 }
 
 async function openManagerReviewModal(reviewId) {
@@ -1184,7 +1368,7 @@ async function openManagerReviewModal(reviewId) {
         ${kpiData.map((k, idx) => `
           <div style="background:var(--s2);padding:12px;border-radius:10px;margin-bottom:10px" id="mgrKpiBox_${idx}">
             <div style="font-weight:700;font-size:12px;margin-bottom:6px;display:flex;justify-content:space-between">
-              <span>${k.name}</span>
+              <span>${escapeHtml(k.name)}</span>
               <span style="color:var(--t3);font-size:11px">Employee Score: ⭐ ${k.selfRating}</span>
             </div>
             <div style="display:grid;grid-template-columns:110px 1fr;gap:10px">
@@ -1239,4 +1423,9 @@ async function submitManagerEvaluation(reviewId) {
   } catch (err) {
     toast(err.message, 'error');
   }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

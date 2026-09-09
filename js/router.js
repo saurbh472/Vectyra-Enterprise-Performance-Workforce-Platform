@@ -18,22 +18,22 @@ function applyTheme(theme) {
   localStorage.setItem('PC_THEME', theme);
   const label = theme === 'light' ? '☀️ Light' : '🌙 Dark';
   const authBtn = document.getElementById('authThemeBtn');
-  const topBtn  = document.getElementById('topbarThemeBtn');
+  const topBtn = document.getElementById('topbarThemeBtn');
   if (authBtn) authBtn.textContent = label;
-  if (topBtn)  topBtn.textContent  = label;
+  if (topBtn) topBtn.textContent = label;
 }
 
 function renderApp() {
   document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('appShell').style.display   = 'block';
+  document.getElementById('appShell').style.display = 'block';
   document.getElementById('demoBanner').style.display = isDemo ? 'flex' : 'none';
 
   const r = currentProfile;
-  document.getElementById('sbAvatar').textContent   = avatarInitials(r?.full_name || '?');
-  document.getElementById('sbName').textContent     = r?.full_name || 'User';
+  document.getElementById('sbAvatar').textContent = avatarInitials(r?.full_name || '?');
+  document.getElementById('sbName').textContent = r?.full_name || 'User';
   document.getElementById('sbRoleText').textContent = roleLabel(r?.role);
-  document.getElementById('sbRoleBadge').textContent= roleLabel(r?.role);
-  document.getElementById('sbRoleBadge').className  = `sb-role-badge role-${r?.role}`;
+  document.getElementById('sbRoleBadge').textContent = roleLabel(r?.role);
+  document.getElementById('sbRoleBadge').className = `sb-role-badge role-${r?.role}`;
 
   document.getElementById('sbNav').innerHTML = buildNav();
   refreshNotifBell();
@@ -53,7 +53,7 @@ function openCompleteProfileModal() {
   const teams = allTeams.length ? allTeams : MOCK_TEAMS;
 
   document.getElementById('modalTitle').textContent = '👋 Welcome! Complete Your Profile';
-  document.getElementById('modalSub').textContent   = 'Please select your department and team to get started';
+  document.getElementById('modalSub').textContent = 'Please select your department and team to get started';
   document.getElementById('modalBody').innerHTML = `
     <div style="background:rgba(79,70,229,.08);border:1px solid rgba(79,70,229,.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--t2)">
       Setting your department and team ensures you receive the correct feedback requests and team reviews.
@@ -62,14 +62,14 @@ function openCompleteProfileModal() {
       <label class="form-label">Department *</label>
       <select class="form-input" id="completeDept" onchange="onCompleteDeptChange(this.value)">
         <option value="">— Select Department —</option>
-        ${depts.map(d => `<option value="${d.name}" ${currentProfile.department===d.name?'selected':''}>${d.name}</option>`).join('')}
+        ${depts.map(d => `<option value="${d.name}" ${currentProfile.department === d.name ? 'selected' : ''}>${d.name}</option>`).join('')}
       </select>
     </div>
     <div class="form-group mb16">
       <label class="form-label">Assign Team *</label>
       <select class="form-input" id="completeTeam">
         <option value="">— Select Team —</option>
-        ${teams.map(t => `<option value="${t.id}" ${currentProfile.team_id===t.id?'selected':''}>${t.name} (${t.department||'General'})</option>`).join('')}
+        ${teams.map(t => `<option value="${t.id}" ${currentProfile.team_id === t.id ? 'selected' : ''}>${t.name} (${t.department || 'General'})</option>`).join('')}
       </select>
     </div>
     <div style="margin-top:20px">
@@ -100,7 +100,7 @@ async function saveCompletedProfile() {
   if (!isDemo) {
     try {
       await API.updateUser(currentProfile.id, { department: dept, team_id: teamId || null });
-    } catch(e) {
+    } catch (e) {
       console.warn('Profile completion update notice:', e.message);
     }
   }
@@ -114,38 +114,52 @@ function buildNav() {
   const role = currentProfile?.role;
   const sections = [];
 
-  sections.push({ label:'Overview', items:[
-    { id:'dashboard', icon:'📊', label:'Dashboard' },
-    { id:'analytics', icon:'📈', label:'Analytics', roles:['super_admin','admin'] },
-  ]});
-  sections.push({ label:'Planning & Execution', items:[
-    { id:'roadmap', icon:'🗺️', label:'Team Roadmap' },
-  ]});
-  sections.push({ label:'Feedback', items:[
-    { id:'quarterly',  icon:'🗓️', label:'Quarterly Review' },
-    { id:'submit',     icon:'✏️', label:'Submit Feedback' },
-    { id:'myFeedback', icon:'📋', label:'My Submissions' },
-  ]});
+  sections.push({
+    label: 'Overview', items: [
+      { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+      { id: 'analytics', icon: '📈', label: 'Analytics', roles: ['super_admin', 'admin'] },
+    ]
+  });
+  sections.push({
+    label: 'Planning & Execution', items: [
+      { id: 'roadmap', icon: '🗺️', label: 'Team Roadmap' },
+    ]
+  });
+  sections.push({
+    label: 'Feedback', items: [
+      { id: 'quarterly', icon: '🗓️', label: 'Quarterly Review' },
+      { id: 'submit', icon: '✏️', label: 'Submit Feedback' },
+      { id: 'myFeedback', icon: '📋', label: 'My Submissions' },
+    ]
+  });
   if (canSeeAll()) {
-    sections.push({ label:'Executive Oversight', items:[
-      { id:'allFeedback', icon:'🗂️', label: 'Company Feedback', badge:'feedbackBadge' },
-    ]});
+    sections.push({
+      label: 'Executive Oversight', items: [
+        { id: 'allFeedback', icon: '🗂️', label: 'Company Feedback', badge: 'feedbackBadge' },
+      ]
+    });
   }
   if (canSeeAll()) {
-    sections.push({ label:'People', items:[
-      { id:'users',       icon:'👥', label:'User Management' },
-      { id:'teams',       icon:'🏷️', label:'Teams' },
-      { id:'departments', icon:'🏢', label:'Departments' },
-      { id:'orgChart',    icon:'🌐', label:'Org Chart' },
-    ]});
-    sections.push({ label:'Admin', items:[
-      { id:'templates', icon:'📝', label:'Form Templates' },
-      { id:'cycles',    icon:'🔁', label:'Review Cycles' },
-    ]});
+    sections.push({
+      label: 'People', items: [
+        { id: 'users', icon: '👥', label: 'User Management' },
+        { id: 'teams', icon: '🏷️', label: 'Teams' },
+        { id: 'departments', icon: '🏢', label: 'Departments' },
+        { id: 'orgChart', icon: '🌐', label: 'Org Chart' },
+      ]
+    });
+    sections.push({
+      label: 'Admin', items: [
+        { id: 'templates', icon: '📝', label: 'Form Templates' },
+        { id: 'cycles', icon: '🔁', label: 'Review Cycles' },
+      ]
+    });
   }
-  sections.push({ label:'Account', items:[
-    { id:'profile', icon:'⚙️', label:'My Profile' },
-  ]});
+  sections.push({
+    label: 'Account', items: [
+      { id: 'profile', icon: '⚙️', label: 'My Profile' },
+    ]
+  });
 
   return sections.map(sec => `
     <div class="sb-section">

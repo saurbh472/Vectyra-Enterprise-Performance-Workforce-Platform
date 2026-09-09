@@ -26,13 +26,13 @@ async function pageDashboard() {
   const data = await fetchFeedback();
   feedbackCache = data;
 
-  const total   = data.length;
-  const scores  = data.filter(r => r.score > 0).map(r => r.score);
-  const avgScore= scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '—';
-  const now     = new Date();
-  const week    = data.filter(r => (now - new Date(r.created_at)) < 7*86400000).length;
-  const npsItems= data.filter(r => r.nps_score != null && r.nps_score >= 0);
-  const promoters  = npsItems.filter(r => r.nps_score >= 9).length;
+  const total = data.length;
+  const scores = data.filter(r => r.score > 0).map(r => r.score);
+  const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '—';
+  const now = new Date();
+  const week = data.filter(r => (now - new Date(r.created_at)) < 7 * 86400000).length;
+  const npsItems = data.filter(r => r.nps_score != null && r.nps_score >= 0);
+  const promoters = npsItems.filter(r => r.nps_score >= 9).length;
   const detractors = npsItems.filter(r => r.nps_score <= 6).length;
   const nps = npsItems.length ? Math.round(((promoters - detractors) / npsItems.length) * 100) : null;
 
@@ -61,11 +61,11 @@ async function pageDashboard() {
         </div>
         <div class="stat-card"><div class="stat-accent" style="background:var(--a5)"></div>
           <div class="stat-label">NPS Score</div>
-          <div class="stat-val" style="color:${nps===null?'var(--t3)':nps>=0?'var(--a3)':'var(--a4)'}">${nps===null?'—':(nps>0?'+':'')+nps}</div>
+          <div class="stat-val" style="color:${nps === null ? 'var(--t3)' : nps >= 0 ? 'var(--a3)' : 'var(--a4)'}">${nps === null ? '—' : (nps > 0 ? '+' : '') + nps}</div>
           <div class="stat-foot">${npsItems.length} ratings</div>
         </div>
       </div>
-      <div class="g2 mb24">${cardDonut(data)}${cardNPS(npsItems,promoters,detractors,nps)}</div>
+      <div class="g2 mb24">${cardDonut(data)}${cardNPS(npsItems, promoters, detractors, nps)}</div>
       <div class="g2">${cardBarChart(data)}${cardActivity(data)}</div>
     ` : `
       <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:12px">📋 My Submission Activity</div>
@@ -103,14 +103,14 @@ function renderActionCenter(data) {
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
           <div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Active Appraisal Cycle: ${cycleTitle}</span>
-              <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.15);color:#34d399">● Active Evaluation Window</span>
+              <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Q2 2026 Company-Wide Review</span>
+              <span class="cyber-pill cyber-pill-completed" style="font-size:10px">✓ Closed &amp; Completed</span>
             </div>
-            <div style="font-size:12px;color:var(--t2);margin-top:4px">Executive oversight &bull; Monitor company-wide quarterly appraisals and team execution roadmaps</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:4px">Executive oversight &bull; Performance appraisal reports &amp; skill competency audits finalized</div>
           </div>
           <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="viewExecutiveReport('Q2 2026 Company-Wide Review')">📄 View Report</button>
             <button class="btn btn-ghost btn-sm" onclick="qrCurrentTab='archive';navigate('quarterly')">📂 All Appraisals Hub</button>
-            <button class="btn btn-primary btn-sm" onclick="navigate('cycles')">🔁 Manage Review Cycles</button>
           </div>
         </div>
 
@@ -156,13 +156,14 @@ function renderActionCenter(data) {
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
           <div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Active Review Cycle: ${cycleTitle}</span>
-              <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.15);color:#34d399">● Active Appraisal Window</span>
+              <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Q2 2026 Company-Wide Review</span>
+              <span class="cyber-pill cyber-pill-completed" style="font-size:10px">✓ Closed &amp; Completed</span>
             </div>
-            <div style="font-size:12px;color:var(--t2);margin-top:4px">${cycleSubtitle} &bull; Complete team evaluations before cycle closing</div>
+            <div style="font-size:12px;color:var(--t2);margin-top:4px">${cycleSubtitle} &bull; Team appraisals and evaluation metrics finalized</div>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-primary btn-sm" onclick="qrCurrentTab='teamReviews';navigate('quarterly')">🏆 Grade Team Appraisals →</button>
+            <button class="btn btn-primary btn-sm" onclick="viewExecutiveReport('Q2 2026 Company-Wide Review')">📄 View Report</button>
+            <button class="btn btn-ghost btn-sm" onclick="qrCurrentTab='teamReviews';navigate('quarterly')">🏆 Grade Team Appraisals →</button>
           </div>
         </div>
 
@@ -208,13 +209,14 @@ function renderActionCenter(data) {
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
         <div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Active Review Cycle: ${cycleTitle}</span>
-            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.15);color:#34d399">● Open For Submissions</span>
+            <span style="font-size:16px;font-weight:800;color:var(--text)">📋 Q2 2026 Company-Wide Review</span>
+            <span class="cyber-pill cyber-pill-completed" style="font-size:10px">✓ Closed &amp; Completed</span>
           </div>
-          <div style="font-size:12px;color:var(--t2);margin-top:4px">${cycleSubtitle} &bull; Complete your self-assessment and technical skill matrix</div>
+          <div style="font-size:12px;color:var(--t2);margin-top:4px">${cycleSubtitle} &bull; View your complete quarterly appraisal report</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-primary btn-sm" onclick="qrCurrentTab='form';navigate('quarterly')">🪞 Complete Self-Review &amp; Skill Matrix →</button>
+          <button class="btn btn-primary btn-sm" onclick="viewExecutiveReport('Q2 2026 Company-Wide Review')">📄 View Report</button>
+          <button class="btn btn-ghost btn-sm" onclick="qrCurrentTab='form';navigate('quarterly')">🪞 Active Form →</button>
         </div>
       </div>
 
@@ -256,7 +258,7 @@ function renderActionCenter(data) {
 
 function renderBadgesCard(badges) {
   const received = allBadges.filter(b => b.awarded_to === currentProfile?.id);
-  const given    = allBadges.filter(b => b.awarded_by === currentProfile?.id);
+  const given = allBadges.filter(b => b.awarded_by === currentProfile?.id);
   const displayBadges = canSeeAll() ? (allBadges.length ? allBadges : badges) : [...received, ...given];
 
   return `
@@ -272,12 +274,12 @@ function renderBadgesCard(badges) {
         ${displayBadges.length ? `
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
             ${displayBadges.map(b => {
-              const recipient = allUsers.find(u => u.id === b.awarded_to) || { full_name: b.awarded_to_name || 'Employee' };
-              const sender    = allUsers.find(u => u.id === b.awarded_by) || { full_name: b.awarded_by_name || 'Leader' };
-              const isToMe   = b.awarded_to === currentProfile?.id;
-              const isFromMe = b.awarded_by === currentProfile?.id;
+    const recipient = allUsers.find(u => u.id === b.awarded_to) || { full_name: b.awarded_to_name || 'Employee' };
+    const sender = allUsers.find(u => u.id === b.awarded_by) || { full_name: b.awarded_by_name || 'Leader' };
+    const isToMe = b.awarded_to === currentProfile?.id;
+    const isFromMe = b.awarded_by === currentProfile?.id;
 
-              return `
+    return `
                 <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center">
                   <div style="font-size:28px;margin-bottom:4px">${b.icon || '🏆'}</div>
                   <div style="font-size:12px;font-weight:700;color:var(--text)">${escapeHtml(b.title)}</div>
@@ -289,7 +291,7 @@ function renderBadgesCard(badges) {
                   </div>
                   ${b.comment ? `<div style="font-size:10px;color:var(--t2);margin-top:6px;font-style:italic">"${escapeHtml(b.comment)}"</div>` : ''}
                 </div>`;
-            }).join('')}
+  }).join('')}
           </div>
         ` : `
           <div style="text-align:center;padding:30px;color:var(--t3)">
@@ -323,12 +325,12 @@ function renderDashboardRoadmapWidget() {
       <div class="card-body">
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
           ${roadmaps.slice(0, 3).map(rm => {
-            const teamObj = allTeams.find(t => t.id === rm.team_id) || { name: 'Engineering Team' };
-            const tasks = rm.tasks || (isDemo ? MOCK_ROADMAP_TASKS.filter(t => t.roadmap_id === rm.id) : []);
-            const completed = tasks.filter(t => t.status === 'done').length;
-            const pct = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+    const teamObj = allTeams.find(t => t.id === rm.team_id) || { name: 'Engineering Team' };
+    const tasks = rm.tasks || (isDemo ? MOCK_ROADMAP_TASKS.filter(t => t.roadmap_id === rm.id) : []);
+    const completed = tasks.filter(t => t.status === 'done').length;
+    const pct = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
 
-            return `
+    return `
               <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer" onclick="navigate('roadmap')">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -336,7 +338,7 @@ function renderDashboardRoadmapWidget() {
                     <span style="font-size:11px;color:var(--t3);font-weight:600">${escapeHtml(rm.quarter || 'Q3 2026')}</span>
                   </div>
                   <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${escapeHtml(rm.title)}</div>
-                  <div style="font-size:11px;color:var(--t3);line-height:1.4">${escapeHtml((rm.description||'').slice(0, 75))}${rm.description && rm.description.length > 75 ? '…' : ''}</div>
+                  <div style="font-size:11px;color:var(--t3);line-height:1.4">${escapeHtml((rm.description || '').slice(0, 75))}${rm.description && rm.description.length > 75 ? '…' : ''}</div>
                 </div>
                 <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
                   <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:4px">
@@ -348,7 +350,7 @@ function renderDashboardRoadmapWidget() {
                   </div>
                 </div>
               </div>`;
-          }).join('')}
+  }).join('')}
         </div>
       </div>
     </div>`;
@@ -365,7 +367,7 @@ function quickReviewTeammate(memberId) {
 
 function openGiveKudosModal() {
   document.getElementById('modalTitle').textContent = '🏆 Award Recognition Badge';
-  document.getElementById('modalSub').textContent   = 'Send a shoutout or appreciation badge to a colleague';
+  document.getElementById('modalSub').textContent = 'Send a shoutout or appreciation badge to a colleague';
   document.getElementById('modalBody').innerHTML = `
     <div class="form-group mb16">
       <label class="form-label">Award To *</label>
@@ -398,8 +400,8 @@ function openGiveKudosModal() {
 
 async function saveKudosBadge() {
   const recipientId = v('kudosRecipient');
-  const badgeType   = v('kudosBadge');
-  const comment     = v('kudosComment');
+  const badgeType = v('kudosBadge');
+  const comment = v('kudosComment');
 
   if (!recipientId || !badgeType) return toast('Please select a colleague and badge', 'warn');
 
@@ -436,21 +438,21 @@ async function saveKudosBadge() {
 }
 
 function cardDonut(data) {
-  const types  = {manager:0,peer:0,hr:0,self:0,'360':0,exit:0};
+  const types = { manager: 0, peer: 0, hr: 0, self: 0, '360': 0, exit: 0 };
   data.forEach(r => { if (r.type in types) types[r.type]++; });
-  const total  = Object.values(types).reduce((a,b)=>a+b,0);
-  const colors = {manager:'#4f46e5',peer:'#059669',hr:'#d97706',self:'#e11d48','360':'#0284c7',exit:'#ca8a04'};
-  const labels = {manager:'Manager',peer:'Peer',hr:'HR & Culture',self:'Self Assessment','360':'Cross Functional',exit:'Exit'};
+  const total = Object.values(types).reduce((a, b) => a + b, 0);
+  const colors = { manager: '#4f46e5', peer: '#059669', hr: '#d97706', self: '#e11d48', '360': '#0284c7', exit: '#ca8a04' };
+  const labels = { manager: 'Manager', peer: 'Peer', hr: 'HR & Culture', self: 'Self Assessment', '360': 'Cross Functional', exit: 'Exit' };
   let arcs = '', offset = 0;
   const r = 35, circ = 2 * Math.PI * r;
   Object.entries(types).forEach(([type, count]) => {
     if (!count) return;
     const d = (count / total) * circ;
     arcs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${colors[type]}" stroke-width="16"
-      stroke-dasharray="${d} ${circ-d}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
+      stroke-dasharray="${d} ${circ - d}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
     offset += d;
   });
-  const legend = Object.entries(types).filter(([,v])=>v>0).map(([t,n]) =>
+  const legend = Object.entries(types).filter(([, v]) => v > 0).map(([t, n]) =>
     `<div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px"><div style="width:10px;height:10px;border-radius:3px;background:${colors[t]}"></div>${labels[t]}<span style="margin-left:auto;font-weight:700">${n}</span></div>`).join('');
   return `<div class="card"><div class="card-header"><div><div class="card-title">Feedback by Type</div></div></div>
     <div class="card-body"><div style="display:flex;align-items:center;gap:20px">
@@ -465,14 +467,14 @@ function cardDonut(data) {
 function cardNPS(npsItems, promoters, detractors, nps) {
   const total = npsItems.length;
   const passives = total - promoters - detractors;
-  const pPct = total ? Math.round((promoters/total)*100) : 0;
-  const dPct = total ? Math.round((detractors/total)*100) : 0;
+  const pPct = total ? Math.round((promoters / total) * 100) : 0;
+  const dPct = total ? Math.round((detractors / total) * 100) : 0;
   const pasPct = total ? (100 - pPct - dPct) : 0;
 
   return `<div class="card"><div class="card-header"><div><div class="card-title">NPS Score</div><div class="card-sub">Employee Net Promoter</div></div></div>
     <div class="card-body">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <div style="font-size:36px;font-weight:800;color:${nps===null?'var(--t3)':nps>=0?'var(--a3)':'var(--a4)'}">${nps===null?'—':(nps>0?'+':'')+nps}</div>
+        <div style="font-size:36px;font-weight:800;color:${nps === null ? 'var(--t3)' : nps >= 0 ? 'var(--a3)' : 'var(--a4)'}">${nps === null ? '—' : (nps > 0 ? '+' : '') + nps}</div>
         <div style="font-size:12px;color:var(--t3)">based on ${total} NPS score responses</div>
       </div>
       <div style="height:12px;background:var(--border);border-radius:6px;overflow:hidden;display:flex">
@@ -487,7 +489,7 @@ function cardNPS(npsItems, promoters, detractors, nps) {
 }
 
 function cardBarChart(data) {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
   const counts = new Array(6).fill(0);
   const monthLabels = [];
@@ -519,18 +521,18 @@ function cardBarChart(data) {
 }
 
 function cardActivity(data) {
-  const cols = {manager:'#4f46e5',peer:'#059669',hr:'#d97706',self:'#e11d48','360':'#0284c7',exit:'#ca8a04'};
-  const msgs = {manager:'submitted Manager feedback',peer:'completed Peer review',hr:'submitted HR feedback',self:'completed Self Review','360':'completed 360° review',exit:'submitted Exit Interview'};
+  const cols = { manager: '#4f46e5', peer: '#059669', hr: '#d97706', self: '#e11d48', '360': '#0284c7', exit: '#ca8a04' };
+  const msgs = { manager: 'submitted Manager feedback', peer: 'completed Peer review', hr: 'submitted HR feedback', self: 'completed Self Review', '360': 'completed 360° review', exit: 'submitted Exit Interview' };
   return `<div class="card"><div class="card-header"><div class="card-title">Recent Activity</div></div>
     <div class="card-body">
-      ${data.length ? data.slice(0,6).map(r=>`
+      ${data.length ? data.slice(0, 6).map(r => `
         <div class="act-item">
-          <div class="act-dot" style="background:${cols[r.type]||'var(--a1)'}"></div>
+          <div class="act-dot" style="background:${cols[r.type] || 'var(--a1)'}"></div>
           <div>
-            <div class="act-text"><strong>${r.is_anonymous?'Anonymous':r.profiles_submitted?.full_name||'Unknown'}</strong> ${msgs[r.type]||'submitted feedback'}</div>
+            <div class="act-text"><strong>${r.is_anonymous ? 'Anonymous' : r.profiles_submitted?.full_name || 'Unknown'}</strong> ${msgs[r.type] || 'submitted feedback'}</div>
             <div class="act-time">${fmtDate(r.created_at)}</div>
           </div>
         </div>`).join('') :
-        `<div class="empty"><div class="empty-icon">💤</div><div class="empty-sub">No activity yet</div></div>`}
+      `<div class="empty"><div class="empty-icon">💤</div><div class="empty-sub">No activity yet</div></div>`}
     </div></div>`;
 }

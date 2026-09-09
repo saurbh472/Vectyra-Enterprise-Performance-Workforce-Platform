@@ -244,10 +244,10 @@ async function initSeedUsers() {
   const hashSuper = await bcrypt.hash(HARDCODED_SUPERADMIN_PASS, 10);
 
   memProfiles = [
-    { id: 'u-superadmin-default', full_name: HARDCODED_SUPERADMIN_NAME, email: HARDCODED_SUPERADMIN_EMAIL, password_hash: hashSuper, role: 'super_admin', department: 'Executive', team_id: 't1', avatar_initials: 'SA', created_at: new Date().toISOString() },
-    { id: 'u2', full_name: 'Sarah Chen', email: 'manager@company.com', password_hash: hashDemo, role: 'manager', department: 'Engineering', team_id: 't1', avatar_initials: 'SC', created_at: new Date().toISOString() },
-    { id: 'u3', full_name: 'Elena Rostova', email: 'hr@company.com', password_hash: hashDemo, role: 'admin', department: 'Human Resources', team_id: 't4', avatar_initials: 'ER', created_at: new Date().toISOString() },
-    { id: 'u4', full_name: 'Marcus Vance', email: 'employee@company.com', password_hash: hashDemo, role: 'employee', department: 'Engineering', team_id: 't1', avatar_initials: 'MV', created_at: new Date().toISOString() }
+    { id: 'u-superadmin-default', full_name: HARDCODED_SUPERADMIN_NAME, email: HARDCODED_SUPERADMIN_EMAIL, password_hash: hashSuper, role: 'super_admin', department: 'Executive', team_id: 't1', secondary_team_ids: [], avatar_initials: 'SA', created_at: new Date().toISOString() },
+    { id: 'u2', full_name: 'Sarah Chen', email: 'manager@company.com', password_hash: hashDemo, role: 'manager', department: 'Engineering', team_id: 't1', secondary_team_ids: ['t3'], avatar_initials: 'SC', created_at: new Date().toISOString() },
+    { id: 'u3', full_name: 'Elena Rostova', email: 'hr@company.com', password_hash: hashDemo, role: 'admin', department: 'Human Resources', team_id: 't4', secondary_team_ids: [], avatar_initials: 'ER', created_at: new Date().toISOString() },
+    { id: 'u4', full_name: 'Marcus Vance', email: 'employee@company.com', password_hash: hashDemo, role: 'employee', department: 'Engineering', team_id: 't1', secondary_team_ids: ['t2'], avatar_initials: 'MV', created_at: new Date().toISOString() }
   ];
 
   memFeedback = [
@@ -341,6 +341,7 @@ async function createPgTables() {
         role VARCHAR(30) NOT NULL DEFAULT 'employee',
         department VARCHAR(100),
         team_id VARCHAR(50),
+        secondary_team_ids TEXT[] DEFAULT '{}',
         avatar_initials VARCHAR(10),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -429,6 +430,8 @@ async function createPgTables() {
     // Add scope column if not present in existing PG table
     try {
       await pool.query('ALTER TABLE skill_templates ADD COLUMN IF NOT EXISTS scope VARCHAR(150) DEFAULT \'General\'');
+      await pool.query('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS secondary_team_ids TEXT[] DEFAULT \'{}\'');
+      await pool.query('ALTER TABLE quarterly_reviews ADD COLUMN IF NOT EXISTS is_unlocked BOOLEAN DEFAULT FALSE');
     } catch(e) {}
 
     // Seed roadmaps & tasks if empty in PG
@@ -571,23 +574,68 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   let user = null;
   if (usePg) {
-    const q = await pool.query('SELECT id, full_name, email, role, department, team_id, avatar_initials, created_at FROM profiles WHERE id = $1', [req.user.id]);
+    const q = await pool.query('SELECT id, full_name, email, role, department, team_id, secondary_team_ids, avatar_initials, created_at FROM profiles WHERE id = $1', [req.user.id]);
     if (q.rows.length > 0) user = q.rows[0];
   } else {
     const p = memProfiles.find(x => x.id === req.user.id);
     if (p) {
       const { password_hash, ...rest } = p;
-      user = rest;
+      user = { ...rest, secondary_team_ids: rest.secondary_team_ids || [] };
     }
   }
   if (!user) return res.status(404).json({ error: 'User profile not found.' });
   res.json(user);
 });
 
+// 2.5 CHANGE PASSWORD
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { current_password, new_password } = req.body;
+
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Current password and new password are required.' });
+  }
+
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+  }
+
+  try {
+    let user = null;
+    if (usePg) {
+      const q = await pool.query('SELECT * FROM profiles WHERE id = $1', [req.user.id]);
+      if (q.rows.length > 0) user = q.rows[0];
+    } else {
+      user = memProfiles.find(x => x.id === req.user.id);
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User profile not found.' });
+    }
+
+    const validPassword = await bcrypt.compare(current_password, user.password_hash);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Incorrect current password.' });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(new_password, 10);
+
+    if (usePg) {
+      await pool.query('UPDATE profiles SET password_hash = $1, updated_at = NOW() WHERE id = $2', [hashedNewPassword, req.user.id]);
+    }
+
+    user.password_hash = hashedNewPassword;
+
+    res.json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    console.error('Password change error:', err);
+    res.status(500).json({ error: 'Failed to update password. Please try again.' });
+  }
+});
+
 // 3. SUPER ADMIN / ADMIN USER PROVISIONING (Create User Account)
 // Self registration is REMOVED. Accounts must be created by SuperAdmin or Admin.
 app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
-  const { full_name, email, password, role, department, team_id } = req.body;
+  const { full_name, email, password, role, department, team_id, secondary_team_ids } = req.body;
 
   if (!full_name || !email || !password) {
     return res.status(400).json({ error: 'Full name, email, and initial password are required.' });
@@ -620,6 +668,7 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newId = 'u-' + Date.now() + Math.random().toString(36).substr(2, 4);
   const initials = avatarInitials(full_name);
+  const secTeams = Array.isArray(secondary_team_ids) ? secondary_team_ids : [];
 
   const newUser = {
     id: newId,
@@ -629,15 +678,16 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
     role: assignedRole,
     department: department || null,
     team_id: team_id || null,
+    secondary_team_ids: secTeams,
     avatar_initials: initials,
     created_at: new Date().toISOString()
   };
 
   if (usePg) {
     await pool.query(
-      `INSERT INTO profiles (id, full_name, email, password_hash, role, department, team_id, avatar_initials, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [newUser.id, newUser.full_name, newUser.email, newUser.password_hash, newUser.role, newUser.department, newUser.team_id, newUser.avatar_initials]
+      `INSERT INTO profiles (id, full_name, email, password_hash, role, department, team_id, secondary_team_ids, avatar_initials, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+      [newUser.id, newUser.full_name, newUser.email, newUser.password_hash, newUser.role, newUser.department, newUser.team_id, newUser.secondary_team_ids, newUser.avatar_initials]
     );
   } else {
     memProfiles.push(newUser);
@@ -654,10 +704,13 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
 // 4. GET ALL USERS PROFILES
 app.get('/api/users', authenticateToken, async (req, res) => {
   if (usePg) {
-    const q = await pool.query('SELECT id, full_name, email, role, department, team_id, avatar_initials, created_at FROM profiles ORDER BY full_name ASC');
-    res.json(q.rows);
+    const q = await pool.query('SELECT id, full_name, email, role, department, team_id, secondary_team_ids, avatar_initials, created_at FROM profiles ORDER BY full_name ASC');
+    res.json(q.rows.map(r => ({ ...r, secondary_team_ids: r.secondary_team_ids || [] })));
   } else {
-    const list = memProfiles.map(({ password_hash, ...rest }) => rest);
+    const list = memProfiles.map(({ password_hash, ...rest }) => ({
+      ...rest,
+      secondary_team_ids: rest.secondary_team_ids || []
+    }));
     res.json(list);
   }
 });
@@ -665,7 +718,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 // 5. UPDATE USER ROLE / TEAM / PROFILE
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   const targetId = req.params.id;
-  const { role, team_id, department, full_name } = req.body;
+  const { role, team_id, secondary_team_ids, department, full_name } = req.body;
 
   // Only Admin or SuperAdmin or Self can edit
   const isSelf = req.user.id === targetId;
@@ -687,6 +740,10 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 
     if (role && isAdmin) { fields.push(`role = $${idx++}`); values.push(role); }
     if (team_id !== undefined && isAdmin) { fields.push(`team_id = $${idx++}`); values.push(team_id || null); }
+    if (secondary_team_ids !== undefined && isAdmin) {
+      fields.push(`secondary_team_ids = $${idx++}`);
+      values.push(Array.isArray(secondary_team_ids) ? secondary_team_ids : []);
+    }
     if (department !== undefined) { fields.push(`department = $${idx++}`); values.push(department || null); }
     if (full_name) { fields.push(`full_name = $${idx++}`); values.push(full_name); }
     fields.push(`updated_at = NOW()`);
@@ -700,6 +757,9 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (target) {
       if (role && isAdmin) target.role = role;
       if (team_id !== undefined && isAdmin) target.team_id = team_id || null;
+      if (secondary_team_ids !== undefined && isAdmin) {
+        target.secondary_team_ids = Array.isArray(secondary_team_ids) ? secondary_team_ids : [];
+      }
       if (department !== undefined) target.department = department || null;
       if (full_name) {
         target.full_name = full_name;
@@ -711,11 +771,25 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   res.json({ message: 'User profile updated successfully.' });
 });
 
-// 6. DELETE USER ACCOUNT (SUPER ADMIN ONLY)
-app.delete('/api/users/:id', authenticateToken, requireRoles('super_admin'), async (req, res) => {
+// 6. DELETE USER ACCOUNT (ADMIN / SUPER ADMIN)
+app.delete('/api/users/:id', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
   const targetId = req.params.id;
   if (targetId === req.user.id) {
-    return res.status(400).json({ error: 'You cannot delete your own Super Admin account.' });
+    return res.status(400).json({ error: 'You cannot delete your own account.' });
+  }
+
+  // Check target user role to prevent non-superadmins from deleting super_admin accounts
+  let targetRole = null;
+  if (usePg) {
+    const check = await pool.query('SELECT role FROM profiles WHERE id = $1', [targetId]);
+    if (check.rows.length > 0) targetRole = check.rows[0].role;
+  } else {
+    const p = memProfiles.find(x => x.id === targetId);
+    if (p) targetRole = p.role;
+  }
+
+  if (targetRole === 'super_admin' && req.user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Only a Super Admin can delete a Super Admin account.' });
   }
 
   if (usePg) {
@@ -1062,7 +1136,20 @@ app.post('/api/quarterly-reviews', authenticateToken, async (req, res) => {
   const employee_id = req.user.id;
   const existingIdx = memQuarterlyReviews.findIndex(r => r.employee_id === employee_id && r.quarter === quarter && parseInt(r.year, 10) === parseInt(year, 10));
 
-  const reviewId = existingIdx >= 0 ? memQuarterlyReviews[existingIdx].id : 'qr-' + Date.now();
+  let existing = null;
+  if (usePg) {
+    const q = await pool.query('SELECT * FROM quarterly_reviews WHERE employee_id = $1 AND quarter = $2 AND year = $3', [employee_id, quarter, parseInt(year, 10)]);
+    if (q.rows.length > 0) existing = q.rows[0];
+  } else if (existingIdx >= 0) {
+    existing = memQuarterlyReviews[existingIdx];
+  }
+
+  // Enforce 1 submission per quarter locking unless explicitly unlocked
+  if (existing && ['submitted', 'reviewed', 'locked'].includes(existing.status) && !existing.is_unlocked && status !== 'draft') {
+    return res.status(403).json({ error: `You have already submitted your review for ${quarter} ${year}. Submissions are locked once submitted.` });
+  }
+
+  const reviewId = existing ? existing.id : 'qr-' + Date.now();
   const reviewObj = {
     id: reviewId,
     employee_id,
@@ -1071,28 +1158,30 @@ app.post('/api/quarterly-reviews', authenticateToken, async (req, res) => {
     quarter,
     year: parseInt(year, 10),
     status: status || 'submitted',
+    is_unlocked: false,
     self_review_data,
     kpi_data,
     skill_matrix_data,
     overall_score: overall_score || 4.5,
-    created_at: new Date().toISOString(),
+    created_at: existing ? (existing.created_at || new Date().toISOString()) : new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
 
   if (usePg) {
     await pool.query(
-      `INSERT INTO quarterly_reviews (id, employee_id, manager_id, team_id, quarter, year, status, self_review_data, kpi_data, skill_matrix_data, overall_score, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      `INSERT INTO quarterly_reviews (id, employee_id, manager_id, team_id, quarter, year, status, is_unlocked, self_review_data, kpi_data, skill_matrix_data, overall_score, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
        ON CONFLICT (employee_id, quarter, year) DO UPDATE SET
          manager_id = EXCLUDED.manager_id,
          team_id = EXCLUDED.team_id,
          status = EXCLUDED.status,
+         is_unlocked = EXCLUDED.is_unlocked,
          self_review_data = EXCLUDED.self_review_data,
          kpi_data = EXCLUDED.kpi_data,
          skill_matrix_data = EXCLUDED.skill_matrix_data,
          overall_score = EXCLUDED.overall_score,
          updated_at = NOW()`,
-      [reviewObj.id, reviewObj.employee_id, reviewObj.manager_id, reviewObj.team_id, reviewObj.quarter, reviewObj.year, reviewObj.status,
+      [reviewObj.id, reviewObj.employee_id, reviewObj.manager_id, reviewObj.team_id, reviewObj.quarter, reviewObj.year, reviewObj.status, reviewObj.is_unlocked,
        JSON.stringify(reviewObj.self_review_data), JSON.stringify(reviewObj.kpi_data), JSON.stringify(reviewObj.skill_matrix_data), reviewObj.overall_score]
     );
   } else {
@@ -1145,6 +1234,27 @@ app.put('/api/quarterly-reviews/:id/manager-review', authenticateToken, requireR
   }
 
   res.json({ message: 'Manager feedback and ratings saved successfully.' });
+});
+
+// UNLOCK / RE-ENABLE QUARTERLY REVIEW SUBMISSION (SUPER ADMIN & HR ADMIN ONLY)
+app.post('/api/quarterly-reviews/:id/unlock', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
+  const id = req.params.id;
+
+  if (usePg) {
+    const q = await pool.query('SELECT * FROM quarterly_reviews WHERE id = $1', [id]);
+    if (q.rows.length === 0) return res.status(404).json({ error: 'Quarterly review not found.' });
+
+    await pool.query('UPDATE quarterly_reviews SET status = $1, is_unlocked = $2, updated_at = NOW() WHERE id = $3', ['unlocked', true, id]);
+  } else {
+    const review = memQuarterlyReviews.find(r => r.id === id);
+    if (!review) return res.status(404).json({ error: 'Quarterly review not found.' });
+
+    review.status = 'unlocked';
+    review.is_unlocked = true;
+    review.updated_at = new Date().toISOString();
+  }
+
+  res.json({ message: 'Quarterly review submission unlocked for editing.' });
 });
 
 // ═══════════════════════════════════════════════════════════════════════

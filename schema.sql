@@ -39,6 +39,7 @@ CREATE TABLE profiles (
     role VARCHAR(30) NOT NULL DEFAULT 'employee' CHECK (role IN ('employee', 'manager', 'admin', 'super_admin')),
     department VARCHAR(100),
     team_id VARCHAR(50) REFERENCES teams(id) ON DELETE SET NULL,
+    secondary_team_ids TEXT[] DEFAULT '{}',
     avatar_initials VARCHAR(10),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -79,6 +80,7 @@ CREATE TABLE quarterly_reviews (
     quarter VARCHAR(50) NOT NULL,
     year INTEGER NOT NULL,
     status VARCHAR(30) DEFAULT 'submitted',
+    is_unlocked BOOLEAN DEFAULT FALSE,
     self_review_data JSONB NOT NULL,
     kpi_data JSONB NOT NULL,
     skill_matrix_data JSONB NOT NULL,

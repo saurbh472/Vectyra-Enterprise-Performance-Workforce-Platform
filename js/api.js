@@ -81,6 +81,13 @@ const API = {
     return await this.request('/api/auth/me');
   },
 
+  async changePassword(currentPassword, newPassword) {
+    return await this.request('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+    });
+  },
+
   logout() {
     this.setToken(null);
   },
@@ -207,6 +214,12 @@ const API = {
     return await this.request(`/api/quarterly-reviews/${id}/manager-review`, {
       method: 'PUT',
       body: JSON.stringify(data)
+    });
+  },
+
+  async unlockQuarterlyReview(id) {
+    return await this.request(`/api/quarterly-reviews/${id}/unlock`, {
+      method: 'POST'
     });
   },
 

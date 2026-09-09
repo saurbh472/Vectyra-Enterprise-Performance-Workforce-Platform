@@ -17,12 +17,24 @@ async function pageOrgChart() {
     const bg = roleBg[u.role]     || roleBg.employee;
     const sz = size === 'lg' ? '52px' : '40px';
     const fs = size === 'lg' ? '18px' : '14px';
-    const dept = u.department ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${u.department}</div>` : '';
+    const dept = u.department ? `<div style="font-size:11px;color:var(--t3);margin-top:2px">${escapeHtml(u.department)}</div>` : '';
+
+    const coreTeam = allTeams.find(t => t.id === u.team_id);
+    const secTeams = (u.secondary_team_ids || [])
+      .map(tid => allTeams.find(t => t.id === tid))
+      .filter(Boolean);
+
     return `<div style="display:flex;align-items:center;gap:12px;background:${bg};border:1px solid ${rb}2a;border-left:3px solid ${rb};border-radius:12px;padding:11px 14px;transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px ${rb}28'" onmouseout="this.style.transform='';this.style.boxShadow=''">
       <div style="width:${sz};height:${sz};border-radius:12px;flex-shrink:0;background:${rc};display:flex;align-items:center;justify-content:center;font-size:${fs};font-weight:700;color:#fff">${avatarInitials(u.full_name)}</div>
-      <div style="min-width:0">
-        <div style="font-size:${size==='lg'?'14px':'13px'};font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.full_name}</div>
-        <div style="margin-top:4px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${rp.bg};color:${rp.color}">${roleLabel(u.role)}</span></div>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:${size==='lg'?'14px':'13px'};font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(u.full_name)}</div>
+        <div style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:${rp.bg};color:${rp.color}">${roleLabel(u.role)}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(234,179,8,0.15);color:#d97706">⭐ ${escapeHtml(coreTeam?.name || 'No Core Team')}</span>
+          ${secTeams.map(st => `
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:12px;background:rgba(79,70,229,0.12);color:var(--a1)">🤝 ${escapeHtml(st.name)}</span>
+          `).join('')}
+        </div>
         ${dept}
       </div>
     </div>`;
@@ -102,7 +114,7 @@ async function pageCycles() {
   document.getElementById('pageContent').innerHTML = `
     <div class="page-header">
       <div><div class="page-title">Review Cycles</div><div class="page-sub">Track and manage active feedback cycles</div></div>
-      <div class="header-right"><button class="btn btn-primary btn-sm" onclick="toast('Cycle creation coming soon!','info')">+ New Cycle</button></div>
+      <div class="header-right"><button class="btn btn-primary btn-sm" onclick="openCreateCycleModal()">+ New Cycle</button></div>
     </div>
     <div class="content fade-up">
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-bottom:28px">
@@ -143,11 +155,45 @@ async function pageCycles() {
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(100,116,139,.1);color:#94a3b8">✓ Closed</span>
-              <button class="btn btn-ghost btn-sm" onclick="toast('Archive download coming soon','info')" style="font-size:11px;padding:4px 10px">View Report</button>
+              <span class="cyber-pill cyber-pill-completed" style="font-size:10px">✓ Closed</span>
+              <button class="btn btn-primary btn-sm" onclick="viewExecutiveReport('${c.label}')" style="font-size:11px;padding:4px 12px">View Report</button>
             </div>
           </div>`).join('')}
       </div>
     </div>`;
+}
+
+function openCreateCycleModal() {
+  document.getElementById('modalTitle').textContent = '🔁 Launch New Review Cycle';
+  document.getElementById('modalSub').textContent   = 'Configure company-wide appraisal cycle parameters';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-group mb16">
+      <label class="form-label">Cycle Title *</label>
+      <input class="form-input" id="cycleTitleInput" placeholder="e.g. Q4 2026 Company-Wide Review">
+    </div>
+    <div class="form-row mb16">
+      <div>
+        <label class="form-label">Start Date *</label>
+        <input type="date" class="form-input" id="cycleStartInput" value="2026-10-01">
+      </div>
+      <div>
+        <label class="form-label">End Date / Deadline *</label>
+        <input type="date" class="form-input" id="cycleEndInput" value="2026-12-31">
+      </div>
+    </div>
+    <div class="form-group mb16">
+      <label class="form-label">Feedback Scopes Included</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" checked> Self Assessment</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" checked> Peer Review</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" checked> Manager Feedback</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" checked> Cross Functional</label>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal();toast('New review cycle scheduled successfully! 🎉','success')">Launch Cycle 🚀</button>
+    </div>`;
+  openModal();
 }
 

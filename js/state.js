@@ -131,10 +131,10 @@ const MOCK_TEAMS = [
 ];
 
 const MOCK_PROFILES = [
-  { id:'u-superadmin-default', full_name:'Super Admin', email:'admin@gmail.com', role:'super_admin', department:'Executive', team_id:'t1', avatar_initials:'SA' },
-  { id:'u2', full_name:'Sarah Chen', email:'manager@company.com', role:'manager', department:'Engineering', team_id:'t1', avatar_initials:'SC' },
-  { id:'u3', full_name:'Elena Rostova', email:'hr@company.com', role:'admin', department:'Human Resources', team_id:'t4', avatar_initials:'ER' },
-  { id:'u4', full_name:'Marcus Vance', email:'employee@company.com', role:'employee', department:'Engineering', team_id:'t1', avatar_initials:'MV' }
+  { id:'u-superadmin-default', full_name:'Super Admin', email:'admin@gmail.com', role:'super_admin', department:'Executive', team_id:'t1', secondary_team_ids: [], avatar_initials:'SA' },
+  { id:'u2', full_name:'Sarah Chen', email:'manager@company.com', role:'manager', department:'Engineering', team_id:'t1', secondary_team_ids: ['t3'], avatar_initials:'SC' },
+  { id:'u3', full_name:'Elena Rostova', email:'hr@company.com', role:'admin', department:'Human Resources', team_id:'t4', secondary_team_ids: [], avatar_initials:'ER' },
+  { id:'u4', full_name:'Marcus Vance', email:'employee@company.com', role:'employee', department:'Engineering', team_id:'t1', secondary_team_ids: ['t2'], avatar_initials:'MV' }
 ];
 
 let MOCK_FEEDBACK = [
