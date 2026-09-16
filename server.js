@@ -63,7 +63,71 @@ let memCycles = [
   { id: 'c2', title: 'H1 2026 Annual Assessment', start_date: '2026-01-01', end_date: '2026-06-30', status: 'completed', created_at: new Date().toISOString() }
 ];
 
-let memQuarterlyReviews = [];
+let memQuarterlyReviews = [
+  {
+    id: 'qr-seed-1',
+    employee_id: 'u-superadmin-default',
+    manager_id: 'u-superadmin-default',
+    team_id: 't2',
+    quarter: 'Q2 (April - July)',
+    year: 2026,
+    status: 'reviewed',
+    is_unlocked: false,
+    overall_score: 4.90,
+    created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+    updated_at: new Date().toISOString(),
+    self_review_data: {
+      months: [
+        { month: 'April, 2026', targets: ['Master Core Platform architecture'], contributions: ['Integrated ELK & Observability Stack'], topContribution: { targetResult: '100% ELK logs integrated', goodPractice: 'Modular service separation', lessonLearnt: 'Distributed platform flow' } },
+        { month: 'May, 2026', targets: ['REST API Gateway integration'], contributions: ['Refactored RBAC code'], topContribution: { targetResult: '40% latency reduction', goodPractice: 'Pair review', lessonLearnt: 'Keycloak token caching' } },
+        { month: 'June, 2026', targets: ['PostgreSQL & Caching research'], contributions: ['Verified RBAC statistics'], topContribution: { targetResult: 'Query indexing verified', goodPractice: 'Automated test suites', lessonLearnt: 'Partition management' } },
+        { month: 'July, 2026', targets: ['Database scalability improvements'], contributions: ['Designed system architecture'], topContribution: { targetResult: 'Multi-site support finalized', goodPractice: 'E2E tests', lessonLearnt: 'High availability clustering' } }
+      ],
+      goalsForNextQuarter: '• Complete and stabilize Kubernetes cloud deployment.\n• Improve observability with Prometheus.',
+      areasOfImprovement: '• Deepen cloud-native architecture & Kubernetes orchestration knowledge.',
+      suggestions: '• Regular knowledge-sharing sessions for backend engineering.',
+      managerFeedback: 'Exceptional strategic direction and platform leadership across all quarterly initiatives.'
+    },
+    kpi_data: [
+      { id: 'kpi1', name: 'Timeline Adherence', selfRating: 5, example: 'Delivered all sprint deliverables on time.', challenges: 'None', managerRating: 5, managerComments: 'Flawless execution.' },
+      { id: 'kpi2', name: 'Initiative Taking', selfRating: 5, example: 'Spearheaded ELK stack logging and RBAC token caching.', challenges: 'None', managerRating: 5, managerComments: 'Proactive leadership.' }
+    ],
+    skill_matrix_data: [
+      { id: 'st-1', category: 'Topics', skill_name: 'Design Pattern', selfRating: 5, comments: 'Extensive use of Gang of Four patterns', trainingRequired: 'NO', managerRating: 5 },
+      { id: 'st-2', category: 'Topics', skill_name: 'Schema Designing', selfRating: 5, comments: 'Designed scalable multi-tenant Postgres schema', trainingRequired: 'NO', managerRating: 5 }
+    ]
+  },
+  {
+    id: 'qr-seed-2',
+    employee_id: 'u4',
+    manager_id: 'u2',
+    team_id: 't1',
+    quarter: 'Q1 (Jan - March)',
+    year: 2026,
+    status: 'reviewed',
+    is_unlocked: false,
+    overall_score: 4.80,
+    created_at: new Date(Date.now() - 120 * 86400000).toISOString(),
+    updated_at: new Date().toISOString(),
+    self_review_data: {
+      months: [
+        { month: 'January, 2026', targets: ['Build UI Component library'], contributions: ['Created 15 reusable design tokens'], topContribution: { targetResult: 'UI consistency achieved', goodPractice: 'Atomic CSS tokens', lessonLearnt: 'Design system modularity' } },
+        { month: 'February, 2026', targets: ['Optimize bundle size'], contributions: ['Implemented code splitting with Vite'], topContribution: { targetResult: 'Bundle size reduced by 35%', goodPractice: 'Lazy loading routes', lessonLearnt: 'Tree shaking techniques' } },
+        { month: 'March, 2026', targets: ['Web Accessibility compliance'], contributions: ['Passed ARIA accessibility audit'], topContribution: { targetResult: 'WCAG 2.1 AA certified', goodPractice: 'Screen reader testing', lessonLearnt: 'Focus ring management' } }
+      ],
+      goalsForNextQuarter: '• Expand React component test coverage with Jest and Cypress.\n• Optimize Core Web Vitals.',
+      areasOfImprovement: '• Deepen state management optimization for large data tables.',
+      suggestions: '• Shared design token repository across frontend teams.',
+      managerFeedback: 'Marcus has shown outstanding growth in UI component architecture and frontend performance.'
+    },
+    kpi_data: [
+      { id: 'kpi1', name: 'Quality of Work', selfRating: 5, example: 'Zero regression defects reported in Q1 release.', challenges: 'None', managerRating: 5, managerComments: 'Very high code quality.' }
+    ],
+    skill_matrix_data: [
+      { id: 'st-f1', category: 'Framework', skill_name: 'ReactJS Component Architecture & Hooks', selfRating: 5, comments: 'Expert level custom hooks', trainingRequired: 'NO', managerRating: 5 }
+    ]
+  }
+];
 let memSkillTemplates = [
   // Topics (Backend Platform Team / Team t2)
   { id: 'st-1', team_id: 't2', category: 'Topics', skill_name: 'Design Pattern', scope: 'Backend, Frontend', is_backend: true, is_frontend: true },
@@ -128,21 +192,30 @@ let memSkillTemplates = [
   { id: 'st-46', team_id: 't2', category: 'AI Tools', skill_name: 'Agentic AI IDE & CLI', scope: 'Developer Tooling', is_backend: false, is_frontend: true },
   { id: 'st-47', team_id: 't2', category: 'AI Tools', skill_name: 'Prompt Engineering', scope: 'AI & LLM', is_backend: true, is_frontend: true },
 
+  // Frontend Engineering Team (t1)
+  { id: 'st-f1', team_id: 't1', category: 'Framework', skill_name: 'ReactJS Component Architecture & Hooks', scope: 'Frontend, UI Components' },
+  { id: 'st-f2', team_id: 't1', category: 'State Management', skill_name: 'Redux & Context State Management', scope: 'State Management' },
+  { id: 'st-f3', team_id: 't1', category: 'Styling', skill_name: 'Modern CSS & Responsive Design Systems', scope: 'UI Components' },
+  { id: 'st-f4', team_id: 't1', category: 'Performance', skill_name: 'Web Vitals & Bundle Size Optimization', scope: 'Performance & Web Vitals' },
+  { id: 'st-f5', team_id: 't1', category: 'Testing', skill_name: 'Jest & Cypress Automated Testing', scope: 'Testing' },
+  { id: 'st-f6', team_id: 't1', category: 'Accessibility', skill_name: 'Web Accessibility (a11y) & ARIA Standards', scope: 'UI Components' },
+  { id: 'st-f7', team_id: 't1', category: 'Tooling', skill_name: 'Vite / Webpack Build Pipeline & Code Splitting', scope: 'Performance & Web Vitals' },
+
   // Growth Marketing Team (t5)
   { id: 'st-m1', team_id: 't5', category: 'Channels', skill_name: 'Search Engine Optimization (SEO)', scope: 'SEO, Growth' },
   { id: 'st-m2', team_id: 't5', category: 'Channels', skill_name: 'Google Ads & PPC Campaigns', scope: 'Paid Media' },
   { id: 'st-m3', team_id: 't5', category: 'Content', skill_name: 'Technical Blog & Case Study Writing', scope: 'Content Writing' },
-  { id: 'st-m4', team_id: 't5', category: 'Analytics', skill_name: 'Google Analytics 4 & Funnel Tracking', scope: 'Growth Analytics' },
-  { id: 'st-m5', team_id: 't5', category: 'Channels', skill_name: 'Social Media & LinkedIn B2B Outreach', scope: 'Social Media, Brand' },
+  { id: 'st-m4', team_id: 't5', category: 'Analytics', skill_name: 'Google Analytics 4 & Funnel Tracking', scope: 'Growth Marketing' },
+  { id: 'st-m5', team_id: 't5', category: 'Channels', skill_name: 'Social Media & LinkedIn B2B Outreach', scope: 'Social Media, Branding' },
 
   // HR Operations Team (t4)
   { id: 'st-h1', team_id: 't4', category: 'Talent', skill_name: 'Technical Talent Acquisition & Sourcing', scope: 'Recruitment' },
-  { id: 'st-h2', team_id: 't4', category: 'Operations', skill_name: 'Payroll Processing & Statutory Compliance', scope: 'Payroll, Compliance' },
-  { id: 'st-h3', team_id: 't4', category: 'Culture', skill_name: 'Employee Engagement & Performance Cycles', scope: 'HR Operations, Culture' },
+  { id: 'st-h2', team_id: 't4', category: 'Operations', skill_name: 'Payroll Processing & Statutory Compliance', scope: 'Payroll & Compliance' },
+  { id: 'st-h3', team_id: 't4', category: 'Culture', skill_name: 'Employee Engagement & Performance Cycles', scope: 'Culture & Engagement' },
   { id: 'st-h4', team_id: 't4', category: 'Policy', skill_name: 'HR Policy Drafting & Conflict Resolution', scope: 'Employee Relations' },
 
   // Product & Design Team (t3)
-  { id: 'st-p1', team_id: 't3', category: 'Design', skill_name: 'Figma UI/UX & Design Systems', scope: 'UI Design' },
+  { id: 'st-p1', team_id: 't3', category: 'Design', skill_name: 'Figma UI/UX & Design Systems', scope: 'UI Design, Design Systems' },
   { id: 'st-p2', team_id: 't3', category: 'Research', skill_name: 'User Interviews & Usability Testing', scope: 'UX Research' },
   { id: 'st-p3', team_id: 't3', category: 'Product', skill_name: 'PRD Drafting & Roadmap Prioritization', scope: 'Product Strategy' },
   { id: 'st-p4', team_id: 't3', category: 'Analytics', skill_name: 'Product Analytics & User Flow Optimization', scope: 'Product Analytics' }
@@ -468,6 +541,20 @@ async function createPgTables() {
         );
       }
       console.log('✅ PostgreSQL database populated with default Skill Matrix templates for SDN Controller team.');
+    }
+
+    // Seed quarterly reviews if empty in PG
+    const qrCount = await pool.query('SELECT count(*) FROM quarterly_reviews');
+    if (parseInt(qrCount.rows[0].count, 10) === 0) {
+      for (const qr of memQuarterlyReviews) {
+        await pool.query(
+          `INSERT INTO quarterly_reviews (id, employee_id, manager_id, team_id, quarter, year, status, is_unlocked, self_review_data, kpi_data, skill_matrix_data, overall_score, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) ON CONFLICT DO NOTHING`,
+          [qr.id, qr.employee_id, qr.manager_id, qr.team_id, qr.quarter, qr.year, qr.status, qr.is_unlocked || false,
+           JSON.stringify(qr.self_review_data), JSON.stringify(qr.kpi_data), JSON.stringify(qr.skill_matrix_data), qr.overall_score, qr.created_at, qr.updated_at]
+        );
+      }
+      console.log('✅ PostgreSQL database populated with sample Quarterly Reviews.');
     }
 
     // Check if superadmin exists in PG, seed if empty
@@ -995,19 +1082,21 @@ app.delete('/api/feedback/:id', authenticateToken, requireRoles('super_admin'), 
 
 // 11. SKILL TEMPLATES (TEAM SPECIFIC)
 app.get('/api/skill-templates', authenticateToken, async (req, res) => {
-  const teamId = req.query.team_id || 't2'; // default to t2 (Backend Platform / SDN Controller Team)
+  const teamId = req.query.team_id;
 
   if (usePg) {
+    if (!teamId || teamId === 'ALL') {
+      const q = await pool.query('SELECT * FROM skill_templates ORDER BY team_id ASC, category ASC, skill_name ASC');
+      return res.json(q.rows);
+    }
     const q = await pool.query('SELECT * FROM skill_templates WHERE team_id = $1 ORDER BY category ASC, skill_name ASC', [teamId]);
-    if (q.rows.length > 0) return res.json(q.rows);
-    // If no custom template for team in PG, return default set
-    const fallbackQ = await pool.query('SELECT * FROM skill_templates WHERE team_id = $1 ORDER BY category ASC, skill_name ASC', ['t2']);
-    return res.json(fallbackQ.rows);
+    return res.json(q.rows);
   } else {
+    if (!teamId || teamId === 'ALL') {
+      return res.json(memSkillTemplates);
+    }
     const items = memSkillTemplates.filter(st => st.team_id === teamId);
-    if (items.length > 0) return res.json(items);
-    // Fallback to t2 if no custom items defined for requested team
-    return res.json(memSkillTemplates.filter(st => st.team_id === 't2'));
+    return res.json(items);
   }
 });
 
@@ -1611,7 +1700,15 @@ app.get('*', (req, res) => {
 
 // Start Server
 initDbConnection().then(() => {
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.log(`🚀 Vectyra Server running on http://${HOST === '0.0.0.0' ? '0.0.0.0' : HOST}:${PORT}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Port ${PORT} is already in use by an active Vectyra server process. Operating on running server instance or run 'npx kill-port 3000' / Stop-Process to restart.`);
+    } else {
+      console.error('Server error:', err);
+    }
   });
 });

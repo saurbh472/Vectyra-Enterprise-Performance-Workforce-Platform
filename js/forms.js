@@ -109,7 +109,7 @@ function buildStructuredForm(type, tpl) {
 
       ${metrics.length ? `
         <div style="margin-bottom:28px">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Section 1: Quality Attributes &amp; Competencies</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Section 1: Quality Attributes &amp; Competencies</div>
           <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Rate each quality metric from 1 to 5 stars and add specific comments</div>
 
           <div style="display:flex;flex-direction:column;gap:14px">
@@ -131,7 +131,7 @@ function buildStructuredForm(type, tpl) {
 
       ${questions.length ? `
         <div style="margin-bottom:24px">
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Section 2: Qualitative &amp; Behavioral Questions</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Section 2: Qualitative &amp; Behavioral Questions</div>
           <div style="font-size:12px;color:var(--t3);margin-bottom:16px">Provide detailed observations and feedback</div>
 
           <div style="display:flex;flex-direction:column;gap:18px">

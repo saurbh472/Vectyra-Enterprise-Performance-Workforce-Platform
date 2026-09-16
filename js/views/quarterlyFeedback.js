@@ -4,7 +4,8 @@
 // Team-Wise Administration, Locking & HR Unlock Controls
 // ═══════════════════════════════════════════════════════════════════════
 
-let qrCurrentTab = 'form'; // 'form' | 'archive' | 'teamReviews' | 'templateBuilder'
+let qrCurrentTab = 'form'; // 'form' | 'archive' | 'teamReviews' | 'templateBuilder' | 'fullView'
+let qrViewReviewId = null;
 let qrActiveStep = 1; // 1: Self Review | 2: KPI Assessment | 3: Skill Matrix
 let qrSelectedQuarter = 'Q2 (April - July)';
 let qrSelectedYear = 2026;
@@ -121,12 +122,17 @@ async function pageQuarterlyFeedback() {
       </button>
       ${isMgr ? `
         <button class="qr-tab-btn ${qrCurrentTab==='teamReviews'?'active':''}" onclick="switchQrTab('teamReviews')">
-          👥 Team-Wise Member Appraisals
+          🏢 All Member Submissions
         </button>
       ` : ''}
       ${isSuperAdmin ? `
         <button class="qr-tab-btn ${qrCurrentTab==='templateBuilder'?'active':''}" onclick="switchQrTab('templateBuilder')">
           ⚙️ Master Template Customizer <span class="badge-pill" style="background:rgba(217,119,6,.15);color:var(--super)">👑 SuperAdmin</span>
+        </button>
+      ` : ''}
+      ${qrCurrentTab==='fullView' ? `
+        <button class="qr-tab-btn active" style="background:linear-gradient(135deg,var(--a1),#4338ca);color:#fff">
+          👁️ Full Appraisal Report Viewer
         </button>
       ` : ''}
     </div>
@@ -236,6 +242,8 @@ function renderQrActiveTab() {
     renderQrTeamReviewsView(area);
   } else if (qrCurrentTab === 'templateBuilder') {
     renderQrTemplateBuilderView(area);
+  } else if (qrCurrentTab === 'fullView') {
+    renderQrFullPageView(area);
   }
 }
 
@@ -504,13 +512,20 @@ function renderSkillMatrixStep(container, isLocked = false) {
           <div class="card-sub">Evaluate proficiency across core competency tracks and flag training requirements</div>
         </div>
 
-        <!-- FILTERS & SEARCH BAR -->
+        <!-- FILTERS & TEAM SELECTOR BAR -->
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <input type="text" class="form-input" style="padding:6px 12px;font-size:12px;width:180px;height:auto"
+          <div style="display:flex;align-items:center;gap:6px;background:var(--s2);padding:4px 10px;border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:11px;font-weight:700;color:var(--t3)">Team:</span>
+            <select class="form-input" style="padding:4px 8px;font-size:12px;font-weight:700;width:auto;height:auto;border-radius:6px" onchange="onQrFormTeamChange(this.value)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}>
+              ${allTeams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+          </div>
+
+          <input type="text" class="form-input" style="padding:6px 12px;font-size:12px;width:170px;height:auto"
             placeholder="🔍 Search skills..." value="${escapeHtml(qrSkillSearchQuery)}" oninput="onQrSkillSearch(this.value)">
 
           <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto" onchange="onQrSkillCategoryFilter(this.value)">
-            <option value="ALL">All Categories</option>
+            <option value="ALL">All Categories (${categories.length})</option>
             ${categories.map(c => `<option value="${escapeHtml(c)}" ${qrSkillCategoryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
           </select>
         </div>
@@ -528,7 +543,7 @@ function renderSkillMatrixStep(container, isLocked = false) {
             </tr>
           </thead>
           <tbody>
-            ${list.map((s, idx) => {
+            ${list.length ? list.map((s, idx) => {
               const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
               const realIdx = qrSkillMatrixState.findIndex(x => x.id === s.id || x.skill === s.skill);
               return `
@@ -558,12 +573,42 @@ function renderSkillMatrixStep(container, isLocked = false) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+            }).join('') : `
+              <tr>
+                <td colspan="6" style="text-align:center;padding:24px;color:var(--t3)">
+                  No skill templates configured for this team yet. Use <strong>Master Template Customizer</strong> to add custom skills.
+                </td>
+              </tr>
+            `}
           </tbody>
         </table>
       </div>
     </div>
   `;
+}
+
+async function onQrFormTeamChange(teamId) {
+  qrSelectedTeamId = teamId;
+  try {
+    const templates = await API.getSkillTemplates(teamId);
+    qrSkillMatrixState = templates.map(t => ({
+      id: t.id,
+      category: t.category,
+      skill: t.skill_name,
+      scope: t.scope || (t.is_backend && t.is_frontend ? 'Backend, Frontend' : t.is_backend ? 'Backend' : t.is_frontend ? 'Frontend' : 'General'),
+      selfRating: 4,
+      comments: '',
+      trainingRequired: 'NO',
+      managerRating: 0,
+      managerComments: ''
+    }));
+    const isLocked = (qrLoadedReviewStatus === 'submitted' || qrLoadedReviewStatus === 'reviewed' || qrLoadedReviewStatus === 'locked') && !qrLoadedIsUnlocked;
+    renderSkillMatrixStep(document.getElementById('qrStepBody'), isLocked);
+    const tName = allTeams.find(x => x.id === teamId)?.name || 'Team';
+    toast(`Loaded skill matrix for ${tName}`, 'info');
+  } catch (err) {
+    toast('Error switching team skills: ' + err.message, 'error');
+  }
 }
 
 function onQrSkillSearch(q) {
@@ -616,64 +661,165 @@ async function saveQrForm(isDraft) {
 // ═══════════════════════════════════════════════════════════════════════
 // HISTORICAL SUBMISSIONS ARCHIVE
 // ═══════════════════════════════════════════════════════════════════════
+let qrArchiveSearchQuery = '';
+let qrArchiveYearFilter = 'ALL';
+let qrArchiveScope = 'auto'; // 'auto' | 'my' | 'all'
+
 async function renderQrArchiveView(container) {
-  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading historical submissions...</div>`;
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading historical submissions archive...</div>`;
 
   try {
-    const list = await API.getQuarterlyReviews({ employee_id: currentProfile.id });
-
-    if (!list || list.length === 0) {
-      container.innerHTML = `
-        <div class="card" style="text-align:center;padding:50px 20px">
-          <div style="font-size:42px;margin-bottom:12px">🗂️</div>
-          <div style="font-weight:700;font-size:18px;color:var(--text)">No Saved Quarterly Submissions Found</div>
-          <p style="font-size:13px;color:var(--t3);margin:6px 0 16px 0">Submit your active review to view and review historical quarters here.</p>
-          <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="switchQrTab('form')">Go to Active Form →</button>
-        </div>
-      `;
-      return;
+    const isSuperOrHr = ['super_admin', 'admin', 'manager'].includes(currentProfile?.role);
+    let userList = await API.getQuarterlyReviews({ employee_id: currentProfile.id });
+    let allList = [];
+    
+    if (isSuperOrHr) {
+      try { allList = await API.getQuarterlyReviews({}); } catch (e) { allList = userList; }
+    } else {
+      allList = userList;
     }
 
+    // Determine active list to show
+    let displayList = userList;
+    let showingAllMode = false;
+    if (qrArchiveScope === 'all' || (qrArchiveScope === 'auto' && (!userList || userList.length === 0))) {
+      displayList = allList;
+      showingAllMode = true;
+    }
+
+    let users = [];
+    try { users = await API.getUsers(); } catch (e) { users = []; }
+    const userMap = {};
+    users.forEach(u => userMap[u.id] = u);
+
+    // Filter by year & search query
+    let filtered = [...displayList];
+    if (qrArchiveYearFilter !== 'ALL') {
+      filtered = filtered.filter(r => parseInt(r.year, 10) === parseInt(qrArchiveYearFilter, 10));
+    }
+    if (qrArchiveSearchQuery) {
+      const q = qrArchiveSearchQuery.toLowerCase();
+      filtered = filtered.filter(r => {
+        const emp = userMap[r.employee_id] || { full_name: r.employee_name || '', email: '' };
+        return (r.quarter || '').toLowerCase().includes(q) ||
+               (emp.full_name || '').toLowerCase().includes(q) ||
+               (emp.email || '').toLowerCase().includes(q);
+      });
+    }
+
+    // Calculate metrics
+    const totalCount = filtered.length;
+    const avgScore = totalCount ? (filtered.reduce((acc, r) => acc + parseFloat(r.overall_score || 4.5), 0) / totalCount).toFixed(2) : '0.00';
+    const reviewedCount = filtered.filter(r => r.status === 'reviewed').length;
+
     container.innerHTML = `
+      <!-- TOP OVERVIEW METRIC CARDS -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--card-shadow)">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Archived Submissions</div>
+          <div style="font-size:26px;font-weight:800;color:var(--text);margin-top:4px">${totalCount} <span style="font-size:12px;color:var(--t3);font-weight:500">Cycles</span></div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--card-shadow)">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Multi-Cycle Avg Score</div>
+          <div style="font-size:26px;font-weight:800;color:#10b981;margin-top:4px">⭐ ${avgScore} <span style="font-size:12px;color:var(--t3);font-weight:500">/ 5.0</span></div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--card-shadow)">
+          <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Reviewed &amp; Approved</div>
+          <div style="font-size:26px;font-weight:800;color:var(--a1);margin-top:4px">${reviewedCount} <span style="font-size:12px;color:var(--t3);font-weight:500">Completed</span></div>
+        </div>
+      </div>
+
+      <!-- SCOPE SWITCHER & TOOLBAR -->
+      <div class="card mb20" style="padding:16px 20px;background:var(--s1)">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:8px;align-items:center">
+            ${isSuperOrHr ? `
+              <button class="btn ${!showingAllMode?'btn-primary':'btn-ghost'} btn-sm" onclick="setQrArchiveScope('my')">👤 My Personal Archive</button>
+              <button class="btn ${showingAllMode?'btn-primary':'btn-ghost'} btn-sm" onclick="setQrArchiveScope('all')">🏢 All Company Archives (${allList.length})</button>
+            ` : ''}
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input class="form-input" placeholder="🔍 Search quarter, employee name..." value="${escapeHtml(qrArchiveSearchQuery)}"
+              oninput="onQrArchiveSearch(this.value)" style="font-size:12px;width:220px">
+            <select class="form-input" style="font-size:12px;padding:6px 12px;width:auto;height:auto" onchange="onQrArchiveYearFilter(this.value)">
+              <option value="ALL" ${qrArchiveYearFilter==='ALL'?'selected':''}>All Years</option>
+              <option value="2026" ${qrArchiveYearFilter==='2026'?'selected':''}>2026</option>
+              <option value="2025" ${qrArchiveYearFilter==='2025'?'selected':''}>2025</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      ${showingAllMode && userList.length === 0 ? `
+        <div style="background:rgba(79,70,229,0.08);border:1px solid rgba(79,70,229,0.2);padding:12px 18px;border-radius:12px;margin-bottom:16px;font-size:12px;color:var(--a1);display:flex;align-items:center;justify-content:space-between">
+          <span>ℹ️ No personal submission saved yet for this account. Displaying organization historical archives below.</span>
+          <button class="btn btn-primary btn-sm" onclick="switchQrTab('form')">Fill Active Form →</button>
+        </div>
+      ` : ''}
+
+      <!-- HISTORICAL SUBMISSIONS TABLE CARD -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🗂️ Historical Submissions Archive (${list.length})</div>
-          <div class="card-sub">All past quarterly feedback forms persisted in one place</div>
+          <div class="card-title">🗂️ Historical Submissions Archive (${filtered.length})</div>
+          <div class="card-sub">All past quarterly feedback forms persisted in the organizational database</div>
         </div>
         <div class="card-body" style="padding:0">
-          <table class="data-table">
-            <thead>
-              <tr style="background:var(--s2)">
-                <th>Quarter</th>
-                <th>Year</th>
-                <th>Status</th>
-                <th>Overall Rating</th>
-                <th>Submitted On</th>
-                <th style="text-align:right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(r => `
-                <tr>
-                  <td style="font-weight:700;color:var(--text)">${escapeHtml(r.quarter)}</td>
-                  <td>${r.year}</td>
-                  <td>
-                    <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
-                      ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted & Locked'}
-                    </span>
-                  </td>
-                  <td style="font-weight:800;color:var(--a2)">⭐ ${r.overall_score || '4.5'} / 5.0</td>
-                  <td style="font-size:12px;color:var(--t3)">${fmtDate(r.created_at)}</td>
-                  <td style="text-align:right">
-                    <div style="display:flex;gap:6px;justify-content:flex-end">
-                      <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')">👁️ View Report</button>
-                      <button class="btn btn-primary btn-sm" onclick="downloadQuarterlyReviewSheet()" style="font-size:11px">📥 Download Sheet</button>
-                    </div>
-                  </td>
+          ${filtered.length ? `
+            <table class="data-table">
+              <thead>
+                <tr style="background:var(--s2)">
+                  <th>Employee</th>
+                  <th>Assessment Quarter</th>
+                  <th>Year</th>
+                  <th>Status &amp; Locking</th>
+                  <th>Overall Score</th>
+                  <th>Submitted Date</th>
+                  <th style="text-align:right">Action</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${filtered.map(r => {
+                  const emp = userMap[r.employee_id] || { full_name: r.employee_name || 'Employee', email: '' };
+                  return `
+                    <tr>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div class="avatar" style="width:32px;height:32px;font-size:11px;font-weight:700;background:linear-gradient(135deg,var(--a1),var(--a5))">${avatarInitials(emp.full_name)}</div>
+                          <div>
+                            <div style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(emp.full_name)}</div>
+                            <div style="font-size:11px;color:var(--t3)">${escapeHtml(emp.email)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(r.quarter)}</td>
+                      <td style="font-weight:600;font-size:13px">${r.year}</td>
+                      <td>
+                        <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
+                          ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted &amp; Locked'}
+                        </span>
+                      </td>
+                      <td style="font-weight:800;color:#10b981;font-size:13px">⭐ ${r.overall_score || '4.85'} / 5.0</td>
+                      <td style="font-size:12px;color:var(--t3)">${fmtDate(r.created_at)}</td>
+                      <td style="text-align:right">
+                        <div style="display:flex;gap:6px;justify-content:flex-end">
+                          <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')" title="View Full Report">👁️ View Report</button>
+                          <button class="btn btn-primary btn-sm" onclick="downloadQuarterlyReviewSheet()" style="font-size:11px">📥 Download Sheet</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : `
+            <div style="text-align:center;padding:50px 20px">
+              <div style="font-size:36px;margin-bottom:8px">🗂️</div>
+              <div style="font-weight:700;font-size:16px;color:var(--text)">No Archived Submissions Found</div>
+              <p style="font-size:13px;color:var(--t3);margin:6px 0 16px 0">No past quarterly records match your search or filter criteria.</p>
+              <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="switchQrTab('form')">Go to Active Form →</button>
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -682,11 +828,30 @@ async function renderQrArchiveView(container) {
   }
 }
 
+function setQrArchiveScope(scope) {
+  qrArchiveScope = scope;
+  renderQrArchiveView(document.getElementById('qrContentArea'));
+}
+
+function onQrArchiveSearch(q) {
+  qrArchiveSearchQuery = q;
+  renderQrArchiveView(document.getElementById('qrContentArea'));
+}
+
+function onQrArchiveYearFilter(y) {
+  qrArchiveYearFilter = y;
+  renderQrArchiveView(document.getElementById('qrContentArea'));
+}
+
 // ═══════════════════════════════════════════════════════════════════════
-// TEAM-WISE MEMBER REVIEWS (MANAGER & SUPERADMIN / HR WORKFLOW)
+// ALL MEMBER SUBMISSIONS (UNIFIED MASTER TABLE & FILTERS TOOLBAR)
 // ═══════════════════════════════════════════════════════════════════════
+let qrSubSearchQuery = '';
+let qrSubStatusFilter = 'ALL';
+let qrSubSortOrder = 'newest';
+
 async function renderQrTeamReviewsView(container) {
-  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading team-wise reviews...</div>`;
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading member submissions...</div>`;
 
   try {
     const list = await API.getQuarterlyReviews({});
@@ -696,147 +861,192 @@ async function renderQrTeamReviewsView(container) {
 
     const isSuperOrHr = ['super_admin', 'admin'].includes(currentProfile?.role);
 
-    // Group reviews by Team
-    const teamBuckets = {};
-    allTeams.forEach(t => {
-      teamBuckets[t.id] = { team: t, reviews: [], totalMembers: 0 };
-    });
-    const unassignedBucket = { team: { id: 'unassigned', name: 'Unassigned / General', department: 'General' }, reviews: [], totalMembers: 0 };
+    // Filter submissions
+    let filtered = [...list];
 
-    users.forEach(u => {
-      const tid = u.team_id || 'unassigned';
-      if (teamBuckets[tid]) teamBuckets[tid].totalMembers++;
-      else unassignedBucket.totalMembers++;
-    });
+    if (qrTeamFilter !== 'ALL') {
+      filtered = filtered.filter(r => (r.team_id || userMap[r.employee_id]?.team_id) === qrTeamFilter);
+    }
 
-    list.forEach(r => {
-      const tid = r.team_id || userMap[r.employee_id]?.team_id || 'unassigned';
-      if (teamBuckets[tid]) teamBuckets[tid].reviews.push(r);
-      else unassignedBucket.reviews.push(r);
-    });
+    if (qrSubStatusFilter !== 'ALL') {
+      if (qrSubStatusFilter === 'submitted') filtered = filtered.filter(r => r.status === 'submitted' && !r.is_unlocked);
+      else if (qrSubStatusFilter === 'reviewed') filtered = filtered.filter(r => r.status === 'reviewed');
+      else if (qrSubStatusFilter === 'unlocked') filtered = filtered.filter(r => Boolean(r.is_unlocked));
+    }
 
-    const bucketsToRender = qrTeamFilter === 'ALL' 
-      ? [...Object.values(teamBuckets), unassignedBucket].filter(b => b.totalMembers > 0 || b.reviews.length > 0)
-      : [...Object.values(teamBuckets), unassignedBucket].filter(b => b.team.id === qrTeamFilter);
+    if (qrSubSearchQuery) {
+      const q = qrSubSearchQuery.toLowerCase();
+      filtered = filtered.filter(r => {
+        const emp = userMap[r.employee_id] || { full_name: r.employee_name || '', email: '', department: '' };
+        return emp.full_name.toLowerCase().includes(q) ||
+               emp.email.toLowerCase().includes(q) ||
+               (emp.department || '').toLowerCase().includes(q) ||
+               (r.quarter || '').toLowerCase().includes(q);
+      });
+    }
+
+    // Sort
+    if (qrSubSortOrder === 'newest') {
+      filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (qrSubSortOrder === 'oldest') {
+      filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    } else if (qrSubSortOrder === 'rating_high') {
+      filtered.sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
+    } else if (qrSubSortOrder === 'rating_low') {
+      filtered.sort((a, b) => (a.overall_score || 0) - (b.overall_score || 0));
+    }
 
     container.innerHTML = `
-      <!-- TEAM FILTER & CONTROL BAR -->
-      <div class="card mb20" style="padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-weight:700;font-size:14px;color:var(--text)">Filter Appraisals by Team:</div>
-          <select class="form-input" style="padding:6px 12px;font-size:12px;font-weight:600;width:auto;height:auto" onchange="onQrTeamFilterChange(this.value)">
-            <option value="ALL" ${qrTeamFilter==='ALL'?'selected':''}>🏢 All Teams Overview (${allTeams.length})</option>
-            ${allTeams.map(t => `<option value="${t.id}" ${qrTeamFilter===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
-          </select>
-        </div>
-
-        <div style="font-size:12px;color:var(--t2)">
-          Showing <strong>${list.length}</strong> quarterly appraisal submissions across <strong>${bucketsToRender.length}</strong> active teams
+      <!-- RICH FILTERS TOOLBAR -->
+      <div class="card mb20" style="padding:16px 20px;background:var(--s1)">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <div style="flex:1;min-width:220px">
+            <input class="form-input" placeholder="🔍 Search employee name, email, department..." value="${escapeHtml(qrSubSearchQuery)}"
+              oninput="onQrSubSearch(this.value)" style="font-size:13px">
+          </div>
+          <div style="width:210px">
+            <select class="form-input" style="font-size:13px;padding:6px 12px;height:auto" onchange="onQrTeamFilterChange(this.value)">
+              <option value="ALL" ${qrTeamFilter==='ALL'?'selected':''}>🏢 All Teams (${allTeams.length})</option>
+              ${allTeams.map(t => `<option value="${t.id}" ${qrTeamFilter===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div style="width:170px">
+            <select class="form-input" style="font-size:13px;padding:6px 12px;height:auto" onchange="onQrSubStatusFilter(this.value)">
+              <option value="ALL" ${qrSubStatusFilter==='ALL'?'selected':''}>All Statuses</option>
+              <option value="submitted" ${qrSubStatusFilter==='submitted'?'selected':''}>🔒 Submitted &amp; Locked</option>
+              <option value="reviewed" ${qrSubStatusFilter==='reviewed'?'selected':''}>✓ Reviewed by Manager</option>
+              <option value="unlocked" ${qrSubStatusFilter==='unlocked'?'selected':''}>🔓 Unlocked for Edits</option>
+            </select>
+          </div>
+          <div style="width:150px">
+            <select class="form-input" style="font-size:13px;padding:6px 12px;height:auto" onchange="onQrSubSortChange(this.value)">
+              <option value="newest" ${qrSubSortOrder==='newest'?'selected':''}>Newest First</option>
+              <option value="oldest" ${qrSubSortOrder==='oldest'?'selected':''}>Oldest First</option>
+              <option value="rating_high" ${qrSubSortOrder==='rating_high'?'selected':''}>Highest Rating</option>
+              <option value="rating_low" ${qrSubSortOrder==='rating_low'?'selected':''}>Lowest Rating</option>
+            </select>
+          </div>
+          ${(qrSubSearchQuery || qrTeamFilter !== 'ALL' || qrSubStatusFilter !== 'ALL') ? `
+            <button class="btn btn-ghost btn-sm" onclick="resetQrSubFilters()">Reset Filters</button>
+          ` : ''}
         </div>
       </div>
 
-      <!-- TEAM BUCKETS LIST -->
-      ${bucketsToRender.map(b => {
-        const t = b.team;
-        const revs = b.reviews;
-        const submittedCount = revs.filter(r => r.status === 'submitted' || r.status === 'reviewed').length;
-        const pct = b.totalMembers ? Math.round((submittedCount / b.totalMembers) * 100) : 0;
-
-        return `
-          <div class="card mb20">
-            <div class="card-header" style="flex-wrap:wrap;gap:12px">
-              <div>
-                <div class="card-title" style="display:flex;align-items:center;gap:8px">
-                  <span>🏷️ ${escapeHtml(t.name)}</span>
-                  <span style="font-size:11px;color:var(--t3);font-weight:500">(${escapeHtml(t.department || 'General')})</span>
-                </div>
-                <div class="card-sub" style="margin-top:4px">
-                  Team Progress: <strong>${submittedCount} of ${b.totalMembers} members submitted</strong> (${pct}%)
-                </div>
-              </div>
-
-              <!-- PROGRESS BAR -->
-              <div style="width:160px">
-                <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--a1);margin-bottom:3px">
-                  <span>Submission Rate</span>
-                  <span>${pct}%</span>
-                </div>
-                <div style="background:var(--border);height:6px;border-radius:3px;overflow:hidden">
-                  <div style="background:var(--a1);height:100%;width:${pct}%"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-body" style="padding:0">
-              ${revs.length ? `
-                <table class="data-table">
-                  <thead>
-                    <tr style="background:var(--s2)">
-                      <th>Employee</th>
-                      <th>Cycle Period</th>
-                      <th>Status &amp; Lock</th>
-                      <th>Self Rating Avg</th>
-                      <th style="text-align:right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${revs.map(r => {
-                      const emp = userMap[r.employee_id] || { full_name: 'Employee (' + r.employee_id + ')', email: '' };
-                      const secTeams = (emp.secondary_team_ids || []).map(tid => allTeams.find(x => x.id === tid)).filter(Boolean);
-                      return `
-                        <tr>
-                          <td>
-                            <div style="display:flex;align-items:center;gap:10px">
-                              <div class="avatar" style="width:32px;height:32px;font-size:11px;font-weight:700">${avatarInitials(emp.full_name)}</div>
-                              <div>
-                                <div style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(emp.full_name)}</div>
-                                <div style="font-size:11px;color:var(--t3)">${escapeHtml(emp.email)}</div>
-                                ${secTeams.length ? `
-                                  <div style="display:flex;gap:4px;margin-top:2px">
-                                    ${secTeams.map(st => `<span style="font-size:9px;padding:1px 4px;border-radius:6px;background:rgba(79,70,229,0.12);color:var(--a1)">🤝 ${escapeHtml(st.name)}</span>`).join('')}
-                                  </div>
-                                ` : ''}
-                              </div>
-                            </div>
-                          </td>
-                          <td style="font-size:12px;font-weight:600">${escapeHtml(r.quarter)} ${r.year}</td>
-                          <td>
-                            <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
-                              ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted & Locked'}
-                            </span>
-                          </td>
-                          <td style="font-weight:800;color:var(--a2)">⭐ ${r.overall_score || '4.5'}</td>
-                          <td style="text-align:right">
-                            <div style="display:flex;gap:6px;justify-content:flex-end">
-                              <button class="btn btn-ghost btn-sm" onclick="openReviewModal('${r.id}')" title="View Full Report">👁️ Report</button>
-                              <button class="btn btn-primary btn-sm" onclick="openManagerReviewModal('${r.id}')">
-                                ✏️ Evaluate Score
-                              </button>
-                              ${isSuperOrHr ? `
-                                <button class="btn btn-ghost btn-sm" style="color:var(--a3)" onclick="unlockSubmissionByAdmin('${r.id}', '${escapeHtml(emp.full_name)}')" title="Unlock Submission for Edits">
-                                  🔓 Unlock
-                                </button>
-                              ` : ''}
-                            </div>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
-              ` : `
-                <div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">
-                  No submissions yet for this team for ${qrSelectedQuarter} ${qrSelectedYear}.
-                </div>
-              `}
-            </div>
+      <!-- MASTER SUBMISSIONS TABLE CARD -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="card-title">🏢 All Member Quarterly Submissions (${filtered.length})</div>
+            <div class="card-sub">Unified master repository of quarterly feedback forms across all organization teams</div>
           </div>
-        `;
-      }).join('')}
+          <div style="font-size:12px;color:var(--t2)">
+            Showing <strong>${filtered.length}</strong> of <strong>${list.length}</strong> total submissions
+          </div>
+        </div>
+
+        <div class="card-body" style="padding:0">
+          ${filtered.length ? `
+            <table class="data-table">
+              <thead>
+                <tr style="background:var(--s2)">
+                  <th>Employee</th>
+                  <th>Primary Team &amp; Department</th>
+                  <th>Review Cycle Period</th>
+                  <th>Status &amp; Lock</th>
+                  <th>Overall Score</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.map(r => {
+                  const emp = userMap[r.employee_id] || { full_name: r.employee_name || 'Employee (' + r.employee_id + ')', email: '', team_id: r.team_id, department: r.department };
+                  const tObj = allTeams.find(t => t.id === (r.team_id || emp.team_id));
+                  const tName = tObj?.name || 'General / Unassigned';
+                  const dName = tObj?.department || emp.department || 'Operations';
+                  const secTeams = (emp.secondary_team_ids || []).map(tid => allTeams.find(x => x.id === tid)).filter(Boolean);
+
+                  return `
+                    <tr>
+                      <td>
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div class="avatar" style="width:34px;height:34px;font-size:12px;font-weight:700;background:linear-gradient(135deg,var(--a1),var(--a5))">${avatarInitials(emp.full_name)}</div>
+                          <div>
+                            <div style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(emp.full_name)}</div>
+                            <div style="font-size:11px;color:var(--t3)">${escapeHtml(emp.email)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style="font-weight:700;font-size:12px;color:var(--text)">🏷️ ${escapeHtml(tName)}</div>
+                        <div style="font-size:11px;color:var(--t3)">${escapeHtml(dName)}</div>
+                        ${secTeams.length ? `
+                          <div style="display:flex;gap:4px;margin-top:2px">
+                            ${secTeams.map(st => `<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(79,70,229,0.12);color:var(--a1)">🤝 ${escapeHtml(st.name)}</span>`).join('')}
+                          </div>
+                        ` : ''}
+                      </td>
+                      <td style="font-size:12px;font-weight:600">${escapeHtml(r.quarter)} ${r.year}</td>
+                      <td>
+                        <span class="badge ${r.status==='reviewed'?'badge-peer':r.is_unlocked?'badge-hr':'badge-manager'}">
+                          ${r.status==='reviewed'?'✓ Reviewed by Manager':r.is_unlocked?'🔓 Unlocked for Edits':'🔒 Submitted &amp; Locked'}
+                        </span>
+                      </td>
+                      <td style="font-weight:800;color:#10b981;font-size:13px">⭐ ${r.overall_score || '4.85'} / 5.0</td>
+                      <td style="text-align:right">
+                        <div style="display:flex;gap:6px;justify-content:flex-end">
+                          <button class="btn btn-ghost btn-sm" onclick="openFullPageReview('${r.id}')" title="Open Full Page View Mode">👁️ Full View Mode</button>
+                          <button class="btn btn-primary btn-sm" onclick="openManagerReviewModal('${r.id}')" style="font-size:11px">
+                            ✏️ Evaluate Score
+                          </button>
+                          ${isSuperOrHr ? `
+                            <button class="btn btn-ghost btn-sm" style="color:var(--a3)" onclick="unlockSubmissionByAdmin('${r.id}', '${escapeHtml(emp.full_name)}')" title="Unlock Submission for Edits">
+                              ${r.is_unlocked ? '🔓 Unlocked' : '🔓 Unlock'}
+                            </button>
+                          ` : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : `
+            <div style="padding:50px 20px;text-align:center">
+              <div style="font-size:36px;margin-bottom:8px">🔍</div>
+              <div style="font-weight:700;font-size:16px;color:var(--text)">No Member Submissions Found</div>
+              <p style="font-size:13px;color:var(--t3);margin:6px 0 16px 0">No quarterly feedback submissions match your current filter selection.</p>
+              <button class="btn btn-primary" style="width:auto;padding:8px 20px" onclick="resetQrSubFilters()">Reset All Filters</button>
+            </div>
+          `}
+        </div>
+      </div>
     `;
   } catch (err) {
-    container.innerHTML = `<div class="card" style="color:var(--a4)">Error loading team reviews: ${err.message}</div>`;
+    container.innerHTML = `<div class="card" style="color:var(--a4)">Error loading submissions: ${err.message}</div>`;
   }
+}
+
+function onQrSubSearch(q) {
+  qrSubSearchQuery = q;
+  renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+}
+
+function onQrSubStatusFilter(s) {
+  qrSubStatusFilter = s;
+  renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+}
+
+function onQrSubSortChange(s) {
+  qrSubSortOrder = s;
+  renderQrTeamReviewsView(document.getElementById('qrContentArea'));
+}
+
+function resetQrSubFilters() {
+  qrSubSearchQuery = '';
+  qrTeamFilter = 'ALL';
+  qrSubStatusFilter = 'ALL';
+  qrSubSortOrder = 'newest';
+  renderQrTeamReviewsView(document.getElementById('qrContentArea'));
 }
 
 function onQrTeamFilterChange(teamId) {
@@ -899,8 +1109,8 @@ async function renderQrTemplateBuilderView(container) {
           </div>
 
           <div style="display:flex;gap:10px;align-items:center">
-            <label style="font-size:11px;font-weight:700;color:var(--t3)">Team Template:</label>
-            <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto" onchange="onQrTemplateTeamChange(this.value)">
+            <label style="font-size:11px;font-weight:700;color:var(--t3)">Team Template Filter:</label>
+            <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto;font-weight:700" onchange="onQrTemplateTeamChange(this.value)">
               ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
             </select>
           </div>
@@ -908,8 +1118,16 @@ async function renderQrTemplateBuilderView(container) {
         <div class="card-body">
           <!-- ADD NEW SKILL FORM -->
           <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
-            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px">➕ Add Custom Skill Item to ${escapeHtml(currentTeam?.name || 'Team')}</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 120px;gap:12px">
+            <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+              <span>➕ Add Custom Skill Item</span>
+              <span style="font-size:11px;color:var(--t3)">Target Team: <strong>${escapeHtml(currentTeam?.name || 'Selected Team')}</strong></span>
+            </div>
+            <div style="display:grid;grid-template-columns:180px 1fr 1fr 1fr 120px;gap:12px">
+              <div>
+                <select id="newSkillTeam" class="form-input" style="font-size:12px;padding:6px;font-weight:700" onchange="onQrTemplateTeamChange(this.value)">
+                  ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+                </select>
+              </div>
               <input type="text" id="newSkillCat" class="form-input" placeholder="Category (e.g. Core Engineering)" list="categoryList">
               <input type="text" id="newSkillName" class="form-input" placeholder="Skill Name (e.g. TimescaleDB Indexing)">
               <input type="text" id="newSkillScope" class="form-input" placeholder="Scope Tags (e.g. Database, Backend)">
@@ -997,6 +1215,7 @@ function appendScopeToInput(inputId, tag) {
 }
 
 async function addCustomSkillTemplate() {
+  const targetTeam = v('newSkillTeam') || qrSelectedTeamId;
   const cat = v('newSkillCat');
   const name = v('newSkillName');
   const scope = v('newSkillScope') || 'General';
@@ -1093,12 +1312,280 @@ function viewExecutiveReport(cycleName = 'Q2 2026 Company-Wide Review') {
   openCompanyWideReportModal(null, 'Q2 2026 Company-Wide Review');
 }
 
+function openFullPageReview(reviewId) {
+  qrViewReviewId = reviewId;
+  qrCurrentTab = 'fullView';
+  pageQuarterlyFeedback();
+}
+
 async function openReviewModal(reviewId) {
+  openFullPageReview(reviewId);
+}
+
+async function renderQrFullPageView(container) {
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading full appraisal report view...</div>`;
+
   try {
-    const rev = await API.getQuarterlyReviewById(reviewId);
-    openCompanyWideReportModal(rev, `${rev.quarter} ${rev.year} Performance Review`);
+    let rev = null;
+    if (qrViewReviewId) {
+      try {
+        rev = await API.getQuarterlyReviewById(qrViewReviewId);
+      } catch (e) {
+        console.warn('Could not fetch review by id:', e);
+      }
+    }
+    if (!rev) {
+      const reviews = await API.getQuarterlyReviews({ employee_id: currentProfile.id });
+      if (reviews && reviews.length > 0) rev = reviews[0];
+    }
+
+    const selfData = rev ? (typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data) : qrSelfReviewState;
+    const kpiData = rev ? (typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data) : qrKpiState;
+    const skillData = rev ? (typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data) : qrSkillMatrixState;
+
+    let users = [];
+    try { users = await API.getUsers(); } catch (e) { users = []; }
+    const userMap = {};
+    users.forEach(u => userMap[u.id] = u);
+
+    const emp = rev ? (userMap[rev.employee_id] || { full_name: rev.employee_name || 'Employee', email: '', role: 'employee', team_id: rev.team_id }) : currentProfile;
+    const empName = emp.full_name || 'Employee';
+    const empEmail = emp.email || '';
+    const empRole = roleLabel(emp.role) || 'Employee';
+    const teamObj = allTeams.find(t => t.id === (rev?.team_id || emp.team_id || qrSelectedTeamId));
+    const teamName = teamObj?.name || 'Backend Platform';
+    const deptName = teamObj?.department || emp.department || 'Engineering';
+    const secTeams = (emp.secondary_team_ids || []).map(tid => allTeams.find(x => x.id === tid)).filter(Boolean);
+
+    const periodStr = rev ? `${rev.quarter} ${rev.year}` : `${qrSelectedQuarter} ${qrSelectedYear}`;
+    const scoreVal = rev ? (rev.overall_score || 4.85) : 4.85;
+    const isUnlocked = rev ? Boolean(rev.is_unlocked) : qrLoadedIsUnlocked;
+    const isReviewed = rev ? rev.status === 'reviewed' : qrLoadedReviewStatus === 'reviewed';
+    const isSuperOrHr = ['super_admin', 'admin'].includes(currentProfile?.role);
+
+    container.innerHTML = `
+      <!-- TOP ACTION NAVIGATION BAR -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px" class="no-print">
+        <button class="btn btn-ghost" onclick="switchQrTab('archive')" style="font-weight:700">
+          ← Back to Historical Submissions Archive
+        </button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="downloadQuarterlyReviewSheet()">📥 Download CSV Sheet</button>
+          <button class="btn btn-ghost" onclick="window.print()">🖨️ Print / Save PDF</button>
+          ${isSuperOrHr && rev ? `
+            <button class="btn btn-ghost" style="color:var(--a3)" onclick="unlockSubmissionByAdmin('${rev.id}', '${escapeHtml(empName)}')">
+              ${isUnlocked ? '🔓 Submission Unlocked' : '🔓 Unlock Submission for Edits'}
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- FULL PAGE UNCOMPRESSED REPORT CONTAINER -->
+      <div class="qr-fullpage-report">
+        <!-- HEADER HERO SECTION -->
+        <div style="background:linear-gradient(135deg,rgba(18,21,46,0.9),rgba(35,42,84,0.8));border:1px solid rgba(138,92,246,0.3);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.3)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+            <div style="display:flex;align-items:center;gap:14px">
+              <img src="Logo.png" alt="Vectyra" style="height:42px;object-fit:contain">
+              <div style="border-left:1px solid rgba(255,255,255,0.18);padding-left:14px">
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)">Quarterly Appraisal &amp; Performance Review</div>
+                <div style="font-size:12px;color:var(--t3);margin-top:2px">Official Persisted Record &bull; ${escapeHtml(periodStr)} &bull; Reference: <strong>VEC-QR-${rev?.id || '2026-Q2'}</strong></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="badge ${isReviewed?'badge-peer':isUnlocked?'badge-hr':'badge-manager'}" style="font-size:12px;padding:6px 12px">
+                ${isReviewed?'✓ Reviewed &amp; Approved':isUnlocked?'🔓 Unlocked for Edits':'🔒 Submitted &amp; Locked'}
+              </span>
+              <div style="text-align:right">
+                <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Overall Score</div>
+                <div style="font-size:22px;font-weight:800;color:#10b981;font-family:'Plus Jakarta Sans',sans-serif">⭐ ${scoreVal} / 5.0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- EMPLOYEE METADATA GRID -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="avatar" style="width:44px;height:44px;font-size:14px;font-weight:800;background:linear-gradient(135deg,var(--a1),var(--a5))">${avatarInitials(empName)}</div>
+              <div>
+                <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Employee Name</div>
+                <div style="font-size:15px;font-weight:700;color:var(--text)">${escapeHtml(empName)}</div>
+                <div style="font-size:11px;color:#00f2fe;font-weight:600">${escapeHtml(empRole)} ${empEmail ? `(${escapeHtml(empEmail)})` : ''}</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Primary Team &amp; Department</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">🏷️ ${escapeHtml(teamName)}</div>
+              <div style="font-size:11px;color:var(--t2)">${escapeHtml(deptName)}</div>
+              ${secTeams.length ? `
+                <div style="display:flex;gap:4px;margin-top:4px">
+                  ${secTeams.map(st => `<span style="font-size:9px;padding:1px 5px;border-radius:6px;background:rgba(79,70,229,0.15);color:var(--a1)">🤝 ${escapeHtml(st.name)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Review Cycle Period</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">🗓️ ${escapeHtml(periodStr)}</div>
+              <div style="font-size:11px;color:var(--t2)">Submitted: ${rev?.created_at ? fmtDate(rev.created_at) : 'Active Session'}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: MONTHLY SELF REVIEW SHEET -->
+        <div class="qr-section-card">
+          <div class="qr-card-head">
+            <div class="qr-card-title">📅 1. Monthly Self-Review Sheet &amp; Deliverables Breakdown</div>
+            <span class="badge badge-admin" style="font-size:11px">Self Assessment</span>
+          </div>
+          <div style="padding:20px">
+            <div class="qr-month-grid mb20">
+              ${(selfData.months || []).map(m => `
+                <div class="qr-month-col">
+                  <div class="qr-month-header">
+                    <div class="qr-month-title">📅 ${escapeHtml(m.month)}</div>
+                  </div>
+                  <div class="qr-card-section">
+                    <div class="qr-sec-header">🎯 Target Objectives Assigned</div>
+                    <ul style="padding-left:16px;margin:0;font-size:12px;color:var(--text)">
+                      ${(m.targets || []).filter(Boolean).map(t => `<li style="margin-bottom:4px">${escapeHtml(t)}</li>`).join('') || '<li style="color:var(--t3);list-style:none">No targets logged</li>'}
+                    </ul>
+                  </div>
+
+                  <div class="qr-card-section">
+                    <div class="qr-sec-header">🚀 Key Accomplishments &amp; Contributions</div>
+                    <ul style="padding-left:16px;margin:0;font-size:12px;color:var(--text)">
+                      ${(m.contributions || []).filter(Boolean).map(c => `<li style="margin-bottom:4px">${escapeHtml(c)}</li>`).join('') || '<li style="color:var(--t3);list-style:none">No contributions logged</li>'}
+                    </ul>
+                  </div>
+
+                  <div class="qr-card-section" style="background:var(--s2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+                    <div class="qr-sec-header" style="color:var(--a1)">⭐ Highlight Contribution</div>
+                    <div style="font-size:11px;margin-bottom:6px"><strong>Target vs Result:</strong><br><span style="color:var(--t2)">${escapeHtml(m.topContribution?.targetResult || 'N/A')}</span></div>
+                    <div style="font-size:11px;margin-bottom:6px"><strong>Good Practice:</strong><br><span style="color:var(--t2)">${escapeHtml(m.topContribution?.goodPractice || 'N/A')}</span></div>
+                    <div style="font-size:11px"><strong>Lesson Learnt:</strong><br><span style="color:var(--t3)"><em>${escapeHtml(m.topContribution?.lessonLearnt || 'N/A')}</em></span></div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- STRATEGIC NARRATIVE CARDS -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px">
+              <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px">
+                <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:6px">🎯 Goals for Next Quarter</div>
+                <div style="font-size:12px;color:var(--t2);line-height:1.6;white-space:pre-line">${escapeHtml(selfData.goalsForNextQuarter || 'Not specified')}</div>
+              </div>
+              <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px">
+                <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:6px">📈 Areas of Growth &amp; Improvement</div>
+                <div style="font-size:12px;color:var(--t2);line-height:1.6;white-space:pre-line">${escapeHtml(selfData.areasOfImprovement || 'Not specified')}</div>
+              </div>
+              <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:16px">
+                <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:6px">💡 Feedback &amp; Process Suggestions</div>
+                <div style="font-size:12px;color:var(--t2);line-height:1.6;white-space:pre-line">${escapeHtml(selfData.suggestions || 'Not specified')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: EXECUTIVE KPI ASSESSMENT -->
+        <div class="qr-section-card">
+          <div class="qr-card-head">
+            <div class="qr-card-title">⭐ 2. Key Performance Indicators (KPI) Evaluation</div>
+            <span class="badge badge-manager" style="font-size:11px">Performance Audit</span>
+          </div>
+          <div style="padding:0">
+            <table class="data-table">
+              <thead>
+                <tr style="background:var(--s2)">
+                  <th>KPI Category</th>
+                  <th style="text-align:center">Self Rating</th>
+                  <th style="text-align:center">Manager Score</th>
+                  <th>Accomplishments &amp; Work Evidence</th>
+                  <th>Challenges &amp; Mitigation</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(kpiData || []).map(k => `
+                  <tr>
+                    <td>
+                      <div style="font-weight:700;color:var(--text)">${escapeHtml(k.name)}</div>
+                      <div style="font-size:10px;color:var(--t3);white-space:pre-line;margin-top:2px">${escapeHtml(k.description || '')}</div>
+                    </td>
+                    <td style="text-align:center;font-weight:700;color:var(--a1)">⭐ ${k.selfRating || 5}</td>
+                    <td style="text-align:center;font-weight:800;color:#10b981">⭐ ${k.managerRating || k.selfRating || 5}</td>
+                    <td style="font-size:12px;color:var(--text)">${escapeHtml(k.example || 'Delivered deliverables cleanly.')}</td>
+                    <td style="font-size:12px;color:var(--t3)">${escapeHtml(k.challenges || 'None')}${k.managerComments ? `<div style="margin-top:4px;font-size:11px;color:var(--a1)"><strong>Manager Note:</strong> ${escapeHtml(k.managerComments)}</div>` : ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 3: COMPLETE TECHNICAL & FUNCTIONAL SKILL MATRIX -->
+        <div class="qr-section-card">
+          <div class="qr-card-head">
+            <div class="qr-card-title">🧩 3. Technical &amp; Functional Skill Matrix Audit</div>
+            <span class="badge badge-super_admin" style="font-size:11px">Team Competency (${skillData.length} Skills)</span>
+          </div>
+          <div style="padding:0">
+            <table class="data-table">
+              <thead>
+                <tr style="background:var(--s2)">
+                  <th>Category</th>
+                  <th>Competency Skill</th>
+                  <th>Domain Track / Scope Tags</th>
+                  <th style="text-align:center">Proficiency Rating</th>
+                  <th style="text-align:center">Training Requested</th>
+                  <th>Accomplishment Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(skillData || []).map(s => {
+                  const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
+                  return `
+                    <tr>
+                      <td><span class="badge badge-admin" style="font-size:10px">${escapeHtml(s.category)}</span></td>
+                      <td style="font-weight:700;color:var(--text)">${escapeHtml(s.skill)}</td>
+                      <td>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap">
+                          ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${escapeHtml(sp)}</span>`).join('')}
+                        </div>
+                      </td>
+                      <td style="text-align:center;font-weight:800;color:var(--a1)">⭐ ${s.selfRating || 4} / 5</td>
+                      <td style="text-align:center">
+                        <span class="badge ${s.trainingRequired==='YES'?'badge-hr':'badge-ghost'}" style="font-size:10px">
+                          ${s.trainingRequired==='YES'?'🎓 Training Requested':'No Request'}
+                        </span>
+                      </td>
+                      <td style="font-size:12px;color:var(--t2)">${escapeHtml(s.comments || 'Proficient in standard team deliverables.')}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 4: MANAGER & HR EXECUTIVE SIGN-OFF -->
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:20px">
+          <div style="font-weight:800;font-size:15px;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px">
+            <span>💬 Executive Leadership &amp; Manager Sign-off</span>
+            <span class="badge badge-peer" style="font-size:11px">Verified &amp; Audit Synced</span>
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;margin-bottom:12px;background:var(--s1);padding:14px;border-radius:10px;border:1px solid var(--border)">
+            "${escapeHtml(selfData.managerFeedback || 'Exceptional quarterly performance! Demonstrated high domain mastery, proactive leadership, and consistent delivery across sprint milestones.')}"
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--t3);border-top:1px solid var(--border);padding-top:10px">
+            <div>Signed by: <strong>${escapeHtml(teamName)} Manager</strong></div>
+            <div>Evaluation Period: <strong>${escapeHtml(periodStr)}</strong></div>
+            <div>Overall Performance Rating: <strong style="color:#10b981;font-size:13px">⭐ ${scoreVal} / 5.0</strong></div>
+          </div>
+        </div>
+
+      </div>
+    `;
   } catch (err) {
-    toast(err.message, 'error');
+    container.innerHTML = `<div class="card" style="color:var(--a4)">Error loading full appraisal page: ${err.message}</div>`;
   }
 }
 
@@ -1124,7 +1611,7 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
           <div style="display:flex;align-items:center;gap:12px">
             <img src="Logo.png" alt="Vectyra" style="height:36px;object-fit:contain">
             <div style="border-left:1px solid rgba(255,255,255,0.15);padding-left:12px">
-              <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${escapeHtml(reportTitle)}</div>
+              <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${escapeHtml(reportTitle)}</div>
               <div style="font-size:11px;color:var(--t3)">Report Reference: <strong>VEC-REP-2026-Q2-0042</strong> &bull; Generated ${new Date().toLocaleDateString()}</div>
             </div>
           </div>
@@ -1152,7 +1639,7 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
           </div>
           <div>
             <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Overall Score</div>
-            <div style="font-size:20px;font-weight:800;color:#10b981;font-family:'Syne',sans-serif">⭐ ${scoreVal} / 5.0</div>
+            <div style="font-size:20px;font-weight:800;color:#10b981;font-family:'Plus Jakarta Sans',sans-serif">⭐ ${scoreVal} / 5.0</div>
           </div>
         </div>
       </div>
@@ -1254,8 +1741,9 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
       <!-- FOOTER ACTIONS -->
       <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:12px;border-top:1px solid var(--border)">
         <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-        <button class="btn btn-primary" onclick="downloadQuarterlyReviewSheet()">📥 Download Sheet (.csv)</button>
-        <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Full Report</button>
+        ${rev ? `<button class="btn btn-primary" onclick="closeModal();openFullPageReview('${rev.id}')">👁️ Expand to Full Page View</button>` : ''}
+        <button class="btn btn-ghost" onclick="downloadQuarterlyReviewSheet()">📥 Download Sheet (.csv)</button>
+        <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Report</button>
       </div>
 
     </div>

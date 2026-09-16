@@ -289,7 +289,7 @@ async function openDetail(id) {
       <!-- SECTION 1: QUALITY METRICS -->
       ${peerData.metrics && peerData.metrics.length ? `
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:10px">📊 Quality Attributes &amp; Competencies</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:10px">📊 Quality Attributes &amp; Competencies</div>
           <div class="table-wrap mb20">
             <table>
               <thead><tr><th>Quality Metric</th><th>Rating</th><th>Submitted Comment / Feedback</th></tr></thead>
@@ -308,7 +308,7 @@ async function openDetail(id) {
       <!-- SECTION 2: QUALITATIVE QUESTIONS & ANSWERS -->
       ${peerData.questions && peerData.questions.length ? `
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:12px">❓ Detailed Qualitative Questions &amp; Answers</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;color:var(--text);margin-bottom:12px">❓ Detailed Qualitative Questions &amp; Answers</div>
           <div style="display:flex;flex-direction:column;gap:12px">
             ${peerData.questions.map((q, idx) => `
               <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px">

@@ -353,10 +353,10 @@ html[data-theme="dark"] .app-sb-logo-img {
 }
 
 .sb-logo-text {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.5px
+  letter-spacing: -0.03em
 }
 
 .sb-logo-text span {
@@ -486,7 +486,7 @@ html[data-theme="dark"] .app-sb-logo-img {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 12px;
   font-weight: 700;
   color: #fff;
@@ -534,11 +534,11 @@ html[data-theme="dark"] .app-sb-logo-img {
 }
 
 .page-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 28px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   color: var(--text)
 }
 
@@ -581,7 +581,8 @@ html[data-theme="dark"] .app-sb-logo-img {
 .card-title {
   font-size: 14px;
   font-weight: 700;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.01em;
   color: var(--text)
 }
 
@@ -656,10 +657,11 @@ html[data-theme="dark"] .app-sb-logo-img {
 }
 
 .stat-val {
-  font-family: 'Syne', sans-serif;
-  font-size: 36px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 32px;
   font-weight: 800;
-  letter-spacing: -1px;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   color: var(--text)
 }
@@ -803,9 +805,10 @@ tr:last-child td {
 }
 
 .form-head-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 20px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   margin-bottom: 4px;
   color: var(--text)
 }
@@ -888,9 +891,10 @@ tr:last-child td {
 }
 
 .type-name {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   margin-bottom: 5px;
   color: var(--text)
 }
@@ -1306,7 +1310,7 @@ tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 22px;
   font-weight: 700;
   color: #fff;
@@ -1314,10 +1318,10 @@ tr:last-child td {
 }
 
 .profile-name {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -.5px;
+  letter-spacing: -0.02em;
   color: var(--text)
 }
 
@@ -1598,9 +1602,10 @@ tr:last-child td {
 }
 
 .qr-month-title {
-  font-family: 'Syne', sans-serif;
-  font-size: 15px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -1896,4 +1901,59 @@ tr:last-child td {
   align-items: center;
   z-index: 50;
   backdrop-filter: blur(12px);
+}
+
+/* Full-Page Appraisal Report Container & Print System */
+.qr-fullpage-report {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px;
+  margin-bottom: 30px;
+  box-shadow: var(--card-shadow);
+}
+
+.qr-section-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.qr-section-card .qr-card-head {
+  background: var(--s2);
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qr-section-card .qr-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .sidebar, .topbar, .demo-banner, .qr-tab-nav, .qr-sticky-bar, .no-print {
+    display: none !important;
+  }
+  .main-content, #pageContent {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .qr-fullpage-report {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
 }
