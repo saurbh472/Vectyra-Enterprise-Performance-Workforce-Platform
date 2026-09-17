@@ -323,7 +323,6 @@ function openViewUserModal(userId) {
 }
 
 function openCreateUserModal() {
-  const depts = allDepartments.length ? allDepartments : MOCK_DEPARTMENTS;
   const teams = allTeams.length ? allTeams : MOCK_TEAMS;
 
   document.getElementById('modalTitle').textContent = '👤 Create New User Account';
@@ -363,32 +362,20 @@ function openCreateUserModal() {
       </div>
     </div>
 
-    <div class="form-row mb16">
-      <div class="form-group">
-        <label class="form-label">Department</label>
-        <select class="form-input" id="nuDept" onchange="onNuDeptChange(this.value)">
-          <option value="">— Select Department —</option>
-          ${depts.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">⭐ Core Team (Primary)</label>
-        <select class="form-input" id="nuTeam">
-          <option value="">— Select Primary Team —</option>
-          ${teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.department||'General')})</option>`).join('')}
-        </select>
+    <div class="form-group mb16">
+      <label class="form-label">⭐ Core Team (Primary)</label>
+      <select class="form-input" id="nuTeam" onchange="onNuTeamChange(this.value)">
+        ${buildNuTeamOptions()}
+      </select>
+      <div id="nuDeptBadgeInfo" style="margin-top:6px;font-size:11px;color:var(--t3)">
+        🏢 Department: <strong id="nuDeptBadgeText" style="color:var(--a1)">Select a team above</strong> (Auto-assigned from team)
       </div>
     </div>
 
     <div class="form-group mb16">
       <label class="form-label">🤝 Supporting Teams (Secondary)</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:140px;overflow-y:auto;background:var(--s1);border:1px solid var(--border);padding:10px;border-radius:8px">
-        ${teams.map(t => `
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="checkbox" name="nuSecTeam" value="${t.id}">
-            <span>${escapeHtml(t.name)}</span>
-          </label>
-        `).join('')}
+      <div id="nuSecTeamsContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:160px;overflow-y:auto;background:var(--s1);border:1px solid var(--border);padding:10px;border-radius:8px">
+        ${buildNuSecTeamCheckboxes('')}
       </div>
     </div>
 
@@ -411,13 +398,59 @@ function generateRandomPass() {
   document.getElementById('nuPass').value = pass;
 }
 
-function onNuDeptChange(dept) {
-  const teamSel = document.getElementById('nuTeam');
-  if (!teamSel) return;
+function buildNuTeamOptions() {
   const teams = allTeams.length ? allTeams : MOCK_TEAMS;
-  const filtered = dept ? teams.filter(t => t.department === dept) : teams;
-  teamSel.innerHTML = '<option value="">— Select Primary Team —</option>' +
-    filtered.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  const deptsMap = {};
+  teams.forEach(t => {
+    const dName = t.department || 'General';
+    if (!deptsMap[dName]) deptsMap[dName] = [];
+    deptsMap[dName].push(t);
+  });
+
+  let html = '<option value="">— Select Primary Team —</option>';
+  for (const [deptName, tList] of Object.entries(deptsMap)) {
+    html += `<optgroup label="🏢 ${escapeHtml(deptName)}">` +
+      tList.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') +
+      `</optgroup>`;
+  }
+  return html;
+}
+
+function buildNuSecTeamCheckboxes(selectedDept = '') {
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  if (!teams.length) return '<div style="font-size:12px;color:var(--t3)">No teams available</div>';
+
+  const matching = selectedDept ? teams.filter(t => (t.department || '').toLowerCase() === selectedDept.toLowerCase()) : [];
+  const others = selectedDept ? teams.filter(t => (t.department || '').toLowerCase() !== selectedDept.toLowerCase()) : teams;
+
+  const sortedTeams = [...matching, ...others];
+
+  return sortedTeams.map(t => {
+    const isDeptMatch = selectedDept && (t.department || '').toLowerCase() === selectedDept.toLowerCase();
+    return `
+      <label style="display:flex;align-items:center;justify-content:space-between;background:var(--s2);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" name="nuSecTeam" value="${t.id}">
+          <span style="color:var(--text);font-weight:500">${escapeHtml(t.name)}</span>
+        </div>
+        <span style="font-size:10px;color:var(--t3)">${isDeptMatch ? '⭐ Dept Match' : escapeHtml(t.department || 'General')}</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function onNuTeamChange(teamId) {
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  const t = teams.find(x => x.id === teamId);
+  const dept = t ? (t.department || 'General') : '';
+  const badgeEl = document.getElementById('nuDeptBadgeText');
+  const secContainer = document.getElementById('nuSecTeamsContainer');
+  if (badgeEl) {
+    badgeEl.textContent = dept ? dept : 'Unassigned';
+  }
+  if (secContainer) {
+    secContainer.innerHTML = buildNuSecTeamCheckboxes(dept);
+  }
 }
 
 async function submitCreateUser() {
@@ -425,8 +458,11 @@ async function submitCreateUser() {
   const email      = v('nuEmail');
   const password   = v('nuPass');
   const role       = v('nuRole');
-  const department = v('nuDept');
   const team_id    = v('nuTeam');
+
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  const selectedTeam = teams.find(t => t.id === team_id);
+  const department   = selectedTeam ? (selectedTeam.department || 'General') : 'General';
 
   const secCheckboxes = document.querySelectorAll('input[name="nuSecTeam"]:checked');
   const secondary_team_ids = Array.from(secCheckboxes).map(cb => cb.value);

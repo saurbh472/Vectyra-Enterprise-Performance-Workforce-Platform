@@ -129,6 +129,19 @@ const API = {
     });
   },
 
+  async updateDepartment(id, data) {
+    return await this.request(`/api/departments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteDepartment(id) {
+    return await this.request(`/api/departments/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   async getTeams() {
     return await this.request('/api/teams');
   },
@@ -137,6 +150,19 @@ const API = {
     return await this.request('/api/teams', {
       method: 'POST',
       body: JSON.stringify(data)
+    });
+  },
+
+  async updateTeam(id, data) {
+    return await this.request(`/api/teams/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteTeam(id) {
+    return await this.request(`/api/teams/${id}`, {
+      method: 'DELETE'
     });
   },
 

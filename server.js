@@ -6,6 +6,14 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+process.on('unhandledRejection', (reason) => {
+  console.warn('⚠️ Unhandled Rejection caught:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.warn('⚠️ Uncaught Exception caught:', err.message);
+});
+
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -26,7 +34,8 @@ const pgConfig = {
   password: process.env.PGPASSWORD || 'postgres',
   database: process.env.PGDATABASE || 'vectyra',
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 2000
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 30000
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -373,6 +382,10 @@ async function initDbConnection() {
   await initSeedUsers();
   try {
     pool = new Pool(pgConfig);
+    pool.on('error', (err) => {
+      console.warn('⚠️ PostgreSQL pool connection drop:', err.message);
+      usePg = false;
+    });
     const client = await pool.connect();
     console.log('✅ Connected to PostgreSQL database successfully!');
     usePg = true;
@@ -755,7 +768,17 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newId = 'u-' + Date.now() + Math.random().toString(36).substr(2, 4);
   const initials = avatarInitials(full_name);
-  const secTeams = Array.isArray(secondary_team_ids) ? secondary_team_ids : [];
+  // Auto-derive department from selected team if department not explicitly provided
+  let derivedDept = department || null;
+  if (team_id && !derivedDept) {
+    if (usePg) {
+      const tRes = await pool.query('SELECT department FROM teams WHERE id = $1', [team_id]);
+      if (tRes.rows.length) derivedDept = tRes.rows[0].department;
+    } else {
+      const t = memTeams.find(x => x.id === team_id);
+      if (t) derivedDept = t.department;
+    }
+  }
 
   const newUser = {
     id: newId,
@@ -763,7 +786,7 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
     email: emailClean,
     password_hash: hashedPassword,
     role: assignedRole,
-    department: department || null,
+    department: derivedDept,
     team_id: team_id || null,
     secondary_team_ids: secTeams,
     avatar_initials: initials,
@@ -912,6 +935,54 @@ app.post('/api/departments', authenticateToken, requireRoles('super_admin', 'adm
   res.status(201).json({ id, name });
 });
 
+app.put('/api/departments/:id', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
+  const { id } = req.params;
+  const { name, description } = req.body;
+  try {
+    if (usePg) {
+      await pool.query('UPDATE departments SET name = COALESCE($1, name) WHERE id = $2', [name, id]);
+    } else {
+      const d = memDepartments.find(x => x.id === id);
+      if (d) {
+        if (name !== undefined) d.name = name;
+        if (description !== undefined) d.description = description;
+      }
+    }
+    res.json({ message: 'Department updated successfully' });
+  } catch (err) {
+    console.error('Error updating department:', err);
+    res.status(500).json({ error: 'Failed to update department: ' + err.message });
+  }
+});
+
+app.delete('/api/departments/:id', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (usePg) {
+      const dRes = await pool.query('SELECT name FROM departments WHERE id = $1', [id]);
+      const deptName = dRes.rows[0]?.name;
+      if (deptName) {
+        await pool.query('UPDATE teams SET department = NULL WHERE department = $1', [deptName]);
+        await pool.query('UPDATE profiles SET department = NULL WHERE department = $1', [deptName]);
+      }
+      await pool.query('DELETE FROM departments WHERE id = $1', [id]);
+    } else {
+      const d = memDepartments.find(x => x.id === id);
+      const deptName = d?.name;
+      const idx = memDepartments.findIndex(x => x.id === id);
+      if (idx !== -1) memDepartments.splice(idx, 1);
+      if (deptName) {
+        memTeams.forEach(t => { if (t.department === deptName) t.department = null; });
+        memProfiles.forEach(p => { if (p.department === deptName) p.department = null; });
+      }
+    }
+    res.json({ message: 'Department deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting department:', err);
+    res.status(500).json({ error: 'Failed to delete department: ' + err.message });
+  }
+});
+
 // 8. TEAMS
 app.get('/api/teams', authenticateToken, async (req, res) => {
   if (usePg) {
@@ -934,6 +1005,53 @@ app.post('/api/teams', authenticateToken, requireRoles('super_admin', 'admin'), 
   }
 
   res.status(201).json({ id, name, department, manager_id });
+});
+
+app.put('/api/teams/:id', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
+  const { id } = req.params;
+  const { name, department, manager_id } = req.body;
+  try {
+    if (usePg) {
+      await pool.query(
+        'UPDATE teams SET name = COALESCE($1, name), department = COALESCE($2, department), manager_id = $3 WHERE id = $4',
+        [name || null, department || null, manager_id || null, id]
+      );
+    } else {
+      const t = memTeams.find(x => x.id === id);
+      if (t) {
+        if (name !== undefined) t.name = name;
+        if (department !== undefined) t.department = department;
+        if (manager_id !== undefined) t.manager_id = manager_id;
+      }
+    }
+    res.json({ message: 'Team updated successfully' });
+  } catch (err) {
+    console.error('Error updating team:', err);
+    res.status(500).json({ error: 'Failed to update team: ' + err.message });
+  }
+});
+
+app.delete('/api/teams/:id', authenticateToken, requireRoles('super_admin', 'admin'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (usePg) {
+      await pool.query('UPDATE profiles SET team_id = NULL WHERE team_id = $1', [id]);
+      await pool.query('DELETE FROM teams WHERE id = $1', [id]);
+    } else {
+      const idx = memTeams.findIndex(t => t.id === id);
+      if (idx !== -1) memTeams.splice(idx, 1);
+      memProfiles.forEach(u => {
+        if (u.team_id === id) u.team_id = null;
+        if (u.secondary_team_ids && Array.isArray(u.secondary_team_ids)) {
+          u.secondary_team_ids = u.secondary_team_ids.filter(stId => stId !== id);
+        }
+      });
+    }
+    res.json({ message: 'Team deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting team:', err);
+    res.status(500).json({ error: 'Failed to delete team: ' + err.message });
+  }
 });
 
 // 9. REVIEW CYCLES
@@ -1691,6 +1809,13 @@ app.delete('/api/roadmap-tasks/:taskId', authenticateToken, async (req, res) => 
   }
 
   res.json({ message: 'Task deleted successfully.' });
+});
+
+// Express Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('⚠️ Express Error Handler:', err?.message || err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: err?.message || 'Internal Server Error' });
 });
 
 // Fallback to index.html for SPA routing

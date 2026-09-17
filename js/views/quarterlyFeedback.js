@@ -1383,11 +1383,11 @@ async function renderQrFullPageView(container) {
       <!-- FULL PAGE UNCOMPRESSED REPORT CONTAINER -->
       <div class="qr-fullpage-report">
         <!-- HEADER HERO SECTION -->
-        <div style="background:linear-gradient(135deg,rgba(18,21,46,0.9),rgba(35,42,84,0.8));border:1px solid rgba(138,92,246,0.3);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.3)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+        <div style="background:linear-gradient(135deg,rgba(79,70,229,0.08),rgba(6,182,212,0.05));border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:var(--card-shadow)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:center;gap:14px">
               <img src="Logo.png" alt="Vectyra" style="height:42px;object-fit:contain">
-              <div style="border-left:1px solid rgba(255,255,255,0.18);padding-left:14px">
+              <div style="border-left:1px solid var(--border);padding-left:14px">
                 <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)">Quarterly Appraisal &amp; Performance Review</div>
                 <div style="font-size:12px;color:var(--t3);margin-top:2px">Official Persisted Record &bull; ${escapeHtml(periodStr)} &bull; Reference: <strong>VEC-QR-${rev?.id || '2026-Q2'}</strong></div>
               </div>
@@ -1410,7 +1410,7 @@ async function renderQrFullPageView(container) {
               <div>
                 <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Employee Name</div>
                 <div style="font-size:15px;font-weight:700;color:var(--text)">${escapeHtml(empName)}</div>
-                <div style="font-size:11px;color:#00f2fe;font-weight:600">${escapeHtml(empRole)} ${empEmail ? `(${escapeHtml(empEmail)})` : ''}</div>
+                <div style="font-size:11px;color:var(--a5);font-weight:600">${escapeHtml(empRole)} ${empEmail ? `(${escapeHtml(empEmail)})` : ''}</div>
               </div>
             </div>
             <div>
@@ -1606,11 +1606,11 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
     <div style="max-height:75vh;overflow-y:auto;padding-right:8px;font-family:'Plus Jakarta Sans',sans-serif">
       
       <!-- REPORT BRAND HEADER -->
-      <div style="background:linear-gradient(135deg,rgba(18,21,46,0.9),rgba(35,42,84,0.8));border:1px solid rgba(138,92,246,0.3);border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 8px 30px rgba(0,0,0,0.3)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="background:linear-gradient(135deg,rgba(79,70,229,0.08),rgba(6,182,212,0.05));border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:var(--card-shadow)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:12px">
             <img src="Logo.png" alt="Vectyra" style="height:36px;object-fit:contain">
-            <div style="border-left:1px solid rgba(255,255,255,0.15);padding-left:12px">
+            <div style="border-left:1px solid var(--border);padding-left:12px">
               <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;color:var(--text)">${escapeHtml(reportTitle)}</div>
               <div style="font-size:11px;color:var(--t3)">Report Reference: <strong>VEC-REP-2026-Q2-0042</strong> &bull; Generated ${new Date().toLocaleDateString()}</div>
             </div>
@@ -1627,7 +1627,7 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
           <div>
             <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Employee Name</div>
             <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:2px">${escapeHtml(empName)}</div>
-            <div style="font-size:11px;color:#00f2fe">${escapeHtml(empRole)}</div>
+            <div style="font-size:11px;color:var(--a5);font-weight:600">${escapeHtml(empRole)}</div>
           </div>
           <div>
             <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Department / Team</div>
@@ -1648,7 +1648,7 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--t3);text-transform:uppercase">KPI Execution</div>
-          <div style="font-size:22px;font-weight:800;color:#00f2fe;margin-top:2px">96.8%</div>
+          <div style="font-size:22px;font-weight:800;color:var(--a5);margin-top:2px">96.8%</div>
         </div>
         <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--t3);text-transform:uppercase">Skill Matrix Rating</div>
@@ -1682,7 +1682,7 @@ function openCompanyWideReportModal(rev = null, reportTitle = 'Q2 2026 Company-W
             <tbody>
               ${(selfData.months || []).map(m => `
                 <tr>
-                  <td style="font-weight:700;color:#00f2fe;white-space:nowrap">${escapeHtml(m.month)}</td>
+                  <td style="font-weight:700;color:var(--a1);white-space:nowrap">${escapeHtml(m.month)}</td>
                   <td style="color:var(--text)">${(m.contributions||[]).map(c=>`• ${escapeHtml(c)}`).join('<br>')}</td>
                   <td style="color:var(--t2)">${escapeHtml(m.topContribution?.targetResult || 'Target achieved on schedule')}</td>
                   <td style="color:var(--t3)"><em>${escapeHtml(m.topContribution?.lessonLearnt || 'Clean modular design')}</em></td>

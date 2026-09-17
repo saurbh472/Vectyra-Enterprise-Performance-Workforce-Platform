@@ -40,9 +40,16 @@ function openCreateTeam() {
   document.getElementById('modalTitle').textContent = 'Create New Team';
   document.getElementById('modalSub').textContent   = 'Set up a team and assign a manager';
   const managers = allUsers.filter(u=>['manager','admin','super_admin'].includes(u.role));
+  const depts = allDepartments.length ? allDepartments : MOCK_DEPARTMENTS;
+
   document.getElementById('modalBody').innerHTML = `
-    <div class="form-group mb16"><label class="form-label">Team Name *</label><input class="form-input" id="nt_name" placeholder="e.g. Frontend Engineering"></div>
-    <div class="form-group mb16"><label class="form-label">Department</label><input class="form-input" id="nt_dept" placeholder="Engineering, Marketing…"></div>
+    <div class="form-group mb16"><label class="form-label">Team Name *</label><input class="form-input" id="nt_name" placeholder="e.g. Core Platform, DevOps, QA"></div>
+    <div class="form-group mb16"><label class="form-label">Department *</label>
+      <select class="form-input" id="nt_dept">
+        ${depts.map(d => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join('')}
+        <option value="General">General</option>
+      </select>
+    </div>
     <div class="form-group mb16"><label class="form-label">Assigned Manager</label>
       <select class="form-input" id="nt_mgr">
         <option value="">— Select manager —</option>
@@ -85,8 +92,14 @@ async function deleteTeam(id, name) {
     const idx = MOCK_TEAMS.findIndex(t => t.id === id);
     if (idx !== -1) MOCK_TEAMS.splice(idx, 1);
     allTeams = [...MOCK_TEAMS];
+  } else {
+    try {
+      await API.deleteTeam(id);
+    } catch (err) {
+      return toast('Error deleting team: ' + err.message, 'err');
+    }
   }
-  toast('Team deleted', 'info');
+  toast(`✅ Team "${name}" deleted!`, 'success');
   await loadMeta();
   pageTeams();
 }
@@ -96,6 +109,12 @@ async function updateTeamManager(teamId, managerId) {
     const team = MOCK_TEAMS.find(t => t.id === teamId);
     if (team) team.manager_id = managerId || null;
     allTeams = [...MOCK_TEAMS];
+  } else {
+    try {
+      await API.updateTeam(teamId, { manager_id: managerId || null });
+    } catch (err) {
+      return toast('Error updating manager: ' + err.message, 'err');
+    }
   }
   toast('Team manager updated!', 'success');
   await loadMeta();

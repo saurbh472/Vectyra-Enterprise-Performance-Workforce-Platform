@@ -74,24 +74,20 @@ async function saveNewDepartment() {
   const exists = allDepartments.some(d => d.name.toLowerCase() === name.toLowerCase());
   if (exists) return toast('A department with this name already exists', 'warn');
 
-  const newDept = {
-    id: 'd-' + Date.now(),
-    name: name,
-    description: desc || ''
-  };
-
-  if (!isDemo) {
+  if (isDemo) {
+    const newDept = { id: 'd-' + Date.now(), name: name, description: desc || '' };
+    saveDepartments([...allDepartments, newDept]);
+  } else {
     try {
       await API.createDepartment(name);
     } catch(e) {
-      console.warn('API createDepartment error:', e.message);
+      return toast('Error creating department: ' + e.message, 'err');
     }
   }
 
-  const updated = [...allDepartments, newDept];
-  saveDepartments(updated);
   closeModal();
   toast(`Department "${name}" created!`, 'success');
+  await loadMeta();
   pageDepartments();
 }
 
@@ -122,15 +118,24 @@ async function updateDepartment(id) {
   const desc = v('deptModalDesc');
   if (!name) return toast('Please enter a department name', 'warn');
 
-  const idx = allDepartments.findIndex(item => item.id === id);
-  if (idx === -1) return;
+  if (isDemo) {
+    const idx = allDepartments.findIndex(item => item.id === id);
+    if (idx !== -1) {
+      allDepartments[idx].name = name;
+      allDepartments[idx].description = desc || '';
+      saveDepartments(allDepartments);
+    }
+  } else {
+    try {
+      await API.updateDepartment(id, { name, description: desc || '' });
+    } catch(err) {
+      return toast('Error updating department: ' + err.message, 'err');
+    }
+  }
 
-  allDepartments[idx].name = name;
-  allDepartments[idx].description = desc || '';
-
-  saveDepartments(allDepartments);
   closeModal();
   toast(`Department updated successfully!`, 'success');
+  await loadMeta();
   pageDepartments();
 }
 
@@ -140,9 +145,19 @@ async function deleteDepartment(id) {
 
   if (!confirm(`Are you sure you want to delete department "${d.name}"?`)) return;
 
-  const updated = allDepartments.filter(item => item.id !== id);
-  saveDepartments(updated);
+  if (isDemo) {
+    const updated = allDepartments.filter(item => item.id !== id);
+    saveDepartments(updated);
+  } else {
+    try {
+      await API.deleteDepartment(id);
+    } catch(err) {
+      return toast('Error deleting department: ' + err.message, 'err');
+    }
+  }
+
   toast(`Department "${d.name}" removed`, 'info');
+  await loadMeta();
   pageDepartments();
 }
 
