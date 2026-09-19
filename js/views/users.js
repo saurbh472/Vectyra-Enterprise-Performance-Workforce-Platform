@@ -472,33 +472,81 @@ async function submitCreateUser() {
     return;
   }
 
-  setBtnLoad('createUserBtn', true);
-
-  if (isDemo) {
-    const newProf = {
-      id: 'u-' + Date.now(),
-      full_name, email, role, department, team_id, secondary_team_ids,
-      avatar_initials: avatarInitials(full_name)
-    };
-    MOCK_PROFILES.push(newProf);
-    allUsers.push(newProf);
-    setBtnLoad('createUserBtn', false);
-    showCredentialsSummaryModal(full_name, email, password);
-    pageUsers();
+  if (password.length < 6) {
+    document.getElementById('createUserErr').innerHTML = `<div class="alert alert-err" style="margin-top:12px">Password must be at least 6 characters long.</div>`;
     return;
   }
 
+  setBtnLoad('createUserBtn', true);
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName  = full_name.trim();
+
+  // Try API creation on backend server
   try {
     const res = await API.createUser({
-      full_name, email, password, role, department, team_id, secondary_team_ids
+      full_name: cleanName,
+      email: cleanEmail,
+      password,
+      role,
+      department,
+      team_id,
+      secondary_team_ids
     });
+
+    // Also register in local demo cache as fallback
+    window.DYNAMIC_DEMO_CREDENTIALS = window.DYNAMIC_DEMO_CREDENTIALS || [];
+    const newProf = res.user || {
+      id: 'u-' + Date.now(),
+      full_name: cleanName,
+      email: cleanEmail,
+      role,
+      department,
+      team_id,
+      secondary_team_ids,
+      avatar_initials: avatarInitials(cleanName)
+    };
+    window.DYNAMIC_DEMO_CREDENTIALS.push({ email: cleanEmail, pass: password, profile: newProf });
+    if (!MOCK_PROFILES.some(p => p.email.toLowerCase() === cleanEmail)) {
+      MOCK_PROFILES.push(newProf);
+    }
+
     setBtnLoad('createUserBtn', false);
     await loadMeta();
-    showCredentialsSummaryModal(full_name, email, password);
+    showCredentialsSummaryModal(cleanName, cleanEmail, password);
     pageUsers();
+    toast('✅ Account created successfully!', 'success');
   } catch (err) {
     setBtnLoad('createUserBtn', false);
-    document.getElementById('createUserErr').innerHTML = `<div class="alert alert-err" style="margin-top:12px">❌ ${err.message}</div>`;
+
+    // If offline in pure demo mode, handle client-side mock registration
+    if (isDemo || (err?.message && err.message.includes('Failed to fetch'))) {
+      const newProf = {
+        id: 'u-' + Date.now(),
+        full_name: cleanName,
+        email: cleanEmail,
+        role,
+        department,
+        team_id,
+        secondary_team_ids,
+        avatar_initials: avatarInitials(cleanName)
+      };
+      window.DYNAMIC_DEMO_CREDENTIALS = window.DYNAMIC_DEMO_CREDENTIALS || [];
+      window.DYNAMIC_DEMO_CREDENTIALS.push({ email: cleanEmail, pass: password, profile: newProf });
+      MOCK_PROFILES.push(newProf);
+      allUsers.push(newProf);
+      showCredentialsSummaryModal(cleanName, cleanEmail, password);
+      pageUsers();
+      toast('✅ Account created in Demo Mode!', 'success');
+      return;
+    }
+
+    const errEl = document.getElementById('createUserErr');
+    if (errEl) {
+      errEl.innerHTML = `<div class="alert alert-err" style="margin-top:12px">❌ ${escapeHtml(err.message)}</div>`;
+    } else {
+      toast(`❌ Error creating user: ${err.message}`, 'err');
+    }
   }
 }
 

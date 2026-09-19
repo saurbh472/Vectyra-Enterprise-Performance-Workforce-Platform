@@ -14,58 +14,69 @@ async function doLogin() {
 
   setBtnLoad('loginBtn', true);
 
-  // Demo emails — work in demo mode
-  const DEMO_EMAILS = ['admin@gmail.com','superadmin@company.com','hr@company.com','manager@company.com','employee@company.com'];
-  const isDemoEmail = DEMO_EMAILS.includes(email.toLowerCase());
+  const cleanEmail = email.trim().toLowerCase();
 
-  if (isDemo && isDemoEmail) {
-    const DEMO_CREDENTIALS = [
-      { email: 'admin@gmail.com', pass: 'superadmin' },
-      { email: 'superadmin@company.com', pass: 'demo123' },
-      { email: 'hr@company.com',         pass: 'demo123' },
-      { email: 'manager@company.com',    pass: 'demo123' },
-      { email: 'employee@company.com',   pass: 'demo123' },
-    ];
-    const validCred = DEMO_CREDENTIALS.find(
-      c => c.email.toLowerCase() === email.toLowerCase() && c.pass === pass
-    );
-    if (!validCred) {
-      setBtnLoad('loginBtn', false);
-      return authErr('❌ Invalid demo credentials. Demo password is <b>demo123</b> for all demo accounts.');
-    }
-    const matched = MOCK_PROFILES.find(p => p.email.toLowerCase() === email.toLowerCase());
-    if (!matched) {
-      setBtnLoad('loginBtn', false);
-      return authErr('❌ Demo account not found.');
-    }
-    currentUser    = { id: matched.id, email: matched.email };
-    currentProfile = matched;
-    allUsers = [...MOCK_PROFILES];
-    allTeams = [...MOCK_TEAMS];
-    setBtnLoad('loginBtn', false);
-    renderApp();
-    toast(`Signed in as ${matched.full_name} (Demo Mode)`, 'success');
-    return;
-  }
-
-  // ─── LIVE POSTGRES API LOGIN ───
-  if (isDemo && !isDemoEmail) {
-    isDemo = false;
-    localStorage.removeItem('PC_DEMO_MODE');
-  }
-
+  // 1. ALWAYS TRY LIVE BACKEND REST API LOGIN FIRST
   try {
-    const data = await API.login(email, pass);
+    const data = await API.login(cleanEmail, pass);
     currentUser = data.user;
     currentProfile = data.user;
+    isDemo = false;
+    localStorage.removeItem('PC_DEMO_MODE');
     await loadMeta();
     setBtnLoad('loginBtn', false);
     renderApp();
     toast(`Welcome back, ${data.user.full_name}!`, 'success');
-  } catch (err) {
-    setBtnLoad('loginBtn', false);
-    authErr(`❌ ${err.message || 'Sign-in failed. Please check your credentials.'}`);
+    return;
+  } catch (apiErr) {
+    console.warn('API login failed or server offline, checking fallback demo authentication:', apiErr?.message);
+    
+    // If backend returned a specific error response (like invalid email or password), and user is NOT explicitly in Demo mode, display the error
+    if (!isDemo && apiErr?.message && !apiErr.message.includes('Failed to fetch')) {
+      setBtnLoad('loginBtn', false);
+      return authErr(`❌ ${apiErr.message || 'Sign-in failed. Please check your credentials.'}`);
+    }
   }
+
+  // 2. FALLBACK DEMO MODE AUTHENTICATION (For offline testing)
+  window.DYNAMIC_DEMO_CREDENTIALS = window.DYNAMIC_DEMO_CREDENTIALS || [];
+  
+  const DEMO_CREDENTIALS = [
+    { email: 'admin@gmail.com', pass: 'superadmin' },
+    { email: 'superadmin@company.com', pass: 'demo123' },
+    { email: 'hr@company.com',         pass: 'demo123' },
+    { email: 'manager@company.com',    pass: 'demo123' },
+    { email: 'employee@company.com',   pass: 'demo123' },
+    ...window.DYNAMIC_DEMO_CREDENTIALS
+  ];
+
+  const validCred = DEMO_CREDENTIALS.find(
+    c => c.email.toLowerCase() === cleanEmail && c.pass === pass
+  );
+
+  if (validCred) {
+    let matched = MOCK_PROFILES.find(p => p.email.toLowerCase() === cleanEmail);
+    if (!matched && validCred.profile) {
+      matched = validCred.profile;
+      MOCK_PROFILES.push(matched);
+    }
+
+    if (matched) {
+      isDemo = true;
+      localStorage.setItem('PC_DEMO_MODE', 'true');
+      currentUser    = { id: matched.id, email: matched.email };
+      currentProfile = matched;
+      allUsers = [...MOCK_PROFILES];
+      allTeams = [...MOCK_TEAMS];
+      setBtnLoad('loginBtn', false);
+      renderApp();
+      toast(`Signed in as ${matched.full_name} (Demo Mode)`, 'success');
+      return;
+    }
+  }
+
+  setBtnLoad('loginBtn', false);
+  authErr('❌ Invalid email or password. Please check your credentials.');
 }
 
 async function doLogout() {

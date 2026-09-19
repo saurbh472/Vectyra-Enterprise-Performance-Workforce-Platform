@@ -768,6 +768,7 @@ app.post('/api/users', authenticateToken, requireRoles('super_admin', 'admin'), 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newId = 'u-' + Date.now() + Math.random().toString(36).substr(2, 4);
   const initials = avatarInitials(full_name);
+  const secTeams = Array.isArray(secondary_team_ids) ? secondary_team_ids : [];
   // Auto-derive department from selected team if department not explicitly provided
   let derivedDept = department || null;
   if (team_id && !derivedDept) {
@@ -828,7 +829,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 // 5. UPDATE USER ROLE / TEAM / PROFILE
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   const targetId = req.params.id;
-  const { role, team_id, secondary_team_ids, department, full_name } = req.body;
+  const { role, team_id, secondary_team_ids, department, full_name, password } = req.body;
 
   // Only Admin or SuperAdmin or Self can edit
   const isSelf = req.user.id === targetId;
@@ -841,6 +842,14 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   // Non-superadmin cannot promote anyone to super_admin
   if (role === 'super_admin' && req.user.role !== 'super_admin' && !isSelf) {
     return res.status(403).json({ error: 'Only Super Admin can assign Super Admin role.' });
+  }
+
+  let newHashedPass = null;
+  if (password) {
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+    newHashedPass = await bcrypt.hash(password, 10);
   }
 
   if (usePg) {
@@ -856,6 +865,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
     if (department !== undefined) { fields.push(`department = $${idx++}`); values.push(department || null); }
     if (full_name) { fields.push(`full_name = $${idx++}`); values.push(full_name); }
+    if (newHashedPass) { fields.push(`password_hash = $${idx++}`); values.push(newHashedPass); }
     fields.push(`updated_at = NOW()`);
 
     if (fields.length > 1) {
@@ -874,6 +884,9 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
       if (full_name) {
         target.full_name = full_name;
         target.avatar_initials = avatarInitials(full_name);
+      }
+      if (newHashedPass) {
+        target.password_hash = newHashedPass;
       }
     }
   }
