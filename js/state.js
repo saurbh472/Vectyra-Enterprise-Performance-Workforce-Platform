@@ -123,6 +123,7 @@ const MOCK_DEPARTMENTS = [
 ];
 
 const MOCK_TEAMS = [
+  { id:'t-qa', name:'Quality Assurance & Testing', department:'Engineering', manager_id:'u2' },
   { id:'t1', name:'Frontend Engineering', department:'Engineering', manager_id:'u2' },
   { id:'t2', name:'Backend Platform', department:'Engineering', manager_id:'u2' },
   { id:'t3', name:'Product Experience', department:'Product & Design', manager_id:'u2' },
@@ -132,6 +133,7 @@ const MOCK_TEAMS = [
 
 const MOCK_PROFILES = [
   { id:'u-superadmin-default', full_name:'Super Admin', email:'admin@gmail.com', role:'super_admin', department:'Executive', team_id:'t1', secondary_team_ids: [], avatar_initials:'SA' },
+  { id:'u-qa', full_name:'Priya Sharma (QA Lead)', email:'qa@company.com', role:'employee', department:'Engineering', team_id:'t-qa', secondary_team_ids: [], avatar_initials:'PS' },
   { id:'u2', full_name:'Sarah Chen', email:'manager@company.com', role:'manager', department:'Engineering', team_id:'t1', secondary_team_ids: ['t3'], avatar_initials:'SC' },
   { id:'u3', full_name:'Elena Rostova', email:'hr@company.com', role:'admin', department:'Human Resources', team_id:'t4', secondary_team_ids: [], avatar_initials:'ER' },
   { id:'u4', full_name:'Marcus Vance', email:'employee@company.com', role:'employee', department:'Engineering', team_id:'t1', secondary_team_ids: ['t2'], avatar_initials:'MV' }

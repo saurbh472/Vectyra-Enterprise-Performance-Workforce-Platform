@@ -17,6 +17,7 @@ let qrSkillSearchQuery = '';
 
 // Preset recommended scopes by team department/domain
 const TEAM_PRESET_SCOPES = {
+  't-qa': ['5G Core & 3GPP', 'IMS & SIP Protocols', 'Core Networking', 'Automation Framework', 'Packet Analysis (PCAP)', 'Cloud Native & K8s', 'Performance & DPDK', 'Test Plan & Documentation', 'AI Tools & Copilot', 'Database & Timescale', 'Linux & Shell'],
   't1': ['Frontend', 'UI Components', 'State Management', 'Performance & Web Vitals', 'Testing'],
   't2': ['Backend', 'Frontend', 'DevOps', 'Networking', 'Database', 'Cloud & K8s', 'Core Platform', 'Security'],
   't3': ['UI Design', 'UX Research', 'Design Systems', 'Product Strategy', 'Prototyping', 'Product Analytics'],
@@ -71,12 +72,36 @@ async function pageQuarterlyFeedback() {
   const container = document.getElementById('pageContent');
   if (!container) return;
 
-  if (currentProfile?.team_id) {
+  if (currentProfile?.team_id && !canSeeAll()) {
     qrSelectedTeamId = currentProfile.team_id;
   }
 
   const isSuperAdmin = currentProfile?.role === 'super_admin';
   const isMgr = isManager() || canSeeAll();
+
+  // Load master templates for gallery header strip
+  let masterTemplates = [];
+  try { masterTemplates = await API.getMasterTemplates(); } catch(e) { masterTemplates = []; }
+
+  const templateEmojis = {
+    'QA / Quality Assurance & Testing Template': '🧪',
+    'SDN / Backend Platform Template': '⚙️',
+    'Frontend Engineering Template': '🎨',
+    'Growth Marketing Template': '📣',
+    'HR Operations Template': '🤝',
+    'Product & Design Template': '✏️',
+    'MarTech & Web Engineering Template': '🌐',
+    'Marketing & Demand Generation Template': '🎯',
+    'Graphic Design & Motion Graphics Template': '🖌️'
+  };
+  const templateColors = [
+    'linear-gradient(135deg,#4f46e5,#7c3aed)',
+    'linear-gradient(135deg,#0ea5e9,#0284c7)',
+    'linear-gradient(135deg,#10b981,#059669)',
+    'linear-gradient(135deg,#f59e0b,#d97706)',
+    'linear-gradient(135deg,#ec4899,#db2777)',
+    'linear-gradient(135deg,#8b5cf6,#6d28d9)'
+  ];
 
   container.innerHTML = `
     <!-- HEADER HERO SECTION -->
@@ -112,6 +137,56 @@ async function pageQuarterlyFeedback() {
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- SKILL MATRIX TEMPLATE GALLERY (HR & SUPERADMIN CONFIGURATION ONLY) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    ${canSeeAll() ? `
+      <div style="margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-weight:800;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px">
+              📋 Skill Matrix Template Gallery
+              <span class="badge badge-admin" style="font-size:10px">${masterTemplates.length} Templates</span>
+            </div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px">Click any template to preview &amp; apply it to your quarterly skill matrix, or create a custom one</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openCreateCustomTemplateModal()" style="font-size:12px">
+            ✨ Create Custom Template
+          </button>
+        </div>
+
+        <!-- TEMPLATE CARDS HORIZONTAL SCROLL STRIP -->
+        <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin">
+          ${masterTemplates.map((t, i) => {
+            const emoji = templateEmojis[t.template_name] || '📋';
+            const grad = templateColors[i % templateColors.length];
+            return `
+              <div onclick="openTemplatePreviewModal('${escapeHtml(t.template_name)}')"
+                style="min-width:200px;max-width:220px;background:var(--s1);border:1.5px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:all 0.2s;box-shadow:var(--card-shadow);flex-shrink:0"
+                onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,0.18)';this.style.borderColor='var(--a1)'"
+                onmouseout="this.style.transform='';this.style.boxShadow='var(--card-shadow)';this.style.borderColor='var(--border)'">
+                <div style="width:44px;height:44px;border-radius:12px;background:${grad};display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15)">${emoji}</div>
+                <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:4px;line-height:1.3">${escapeHtml(t.template_name)}</div>
+                <div style="font-size:11px;color:var(--t3)">${t.item_count} skills &bull; ${t.category_count} categories</div>
+                <div style="margin-top:10px;display:flex;gap:6px">
+                  <span style="font-size:10px;font-weight:700;color:var(--a1);background:rgba(79,70,229,0.1);padding:3px 8px;border-radius:8px">👁️ Preview &amp; Apply</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+          <!-- CREATE NEW CUSTOM TEMPLATE CARD -->
+          <div onclick="openCreateCustomTemplateModal()"
+            style="min-width:180px;max-width:200px;background:var(--s2);border:2px dashed var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:all 0.2s;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:130px"
+            onmouseover="this.style.borderColor='var(--a1)';this.style.background='rgba(79,70,229,0.05)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--s2)'">
+            <div style="font-size:28px;margin-bottom:8px">➕</div>
+            <div style="font-weight:700;font-size:12px;color:var(--a1)">Create Custom Template</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:4px">Build from scratch with your own skills &amp; categories</div>
+          </div>
+        </div>
+      </div>
+    ` : ''}
+
     <!-- MODULE NAVIGATION TABS -->
     <div class="qr-tab-nav">
       <button class="qr-tab-btn ${qrCurrentTab==='form'?'active':''}" onclick="switchQrTab('form')">
@@ -120,6 +195,11 @@ async function pageQuarterlyFeedback() {
       <button class="qr-tab-btn ${qrCurrentTab==='archive'?'active':''}" onclick="switchQrTab('archive')">
         🗂️ Historical Submissions Archive
       </button>
+      ${canSeeAll() ? `
+        <button class="qr-tab-btn ${qrCurrentTab==='templateGallery'?'active':''}" onclick="switchQrTab('templateGallery')">
+          📋 Templates &amp; Skill Library
+        </button>
+      ` : ''}
       ${isMgr ? `
         <button class="qr-tab-btn ${qrCurrentTab==='teamReviews'?'active':''}" onclick="switchQrTab('teamReviews')">
           🏢 All Member Submissions
@@ -212,6 +292,7 @@ async function loadQuarterlyFeedbackData() {
         id: t.id,
         category: t.category,
         skill: t.skill_name,
+        description: t.description || '',
         scope: t.scope || (t.is_backend && t.is_frontend ? 'Backend, Frontend' : t.is_backend ? 'Backend' : t.is_frontend ? 'Frontend' : 'General'),
         selfRating: 4,
         comments: '',
@@ -226,6 +307,14 @@ async function loadQuarterlyFeedbackData() {
 }
 
 function switchQrTab(tab) {
+  if (tab === 'templateGallery' && !canSeeAll()) {
+    toast('Access Denied: Template Library configuration is restricted to HR and SuperAdmin.', 'err');
+    return;
+  }
+  if (tab === 'templateBuilder' && currentProfile?.role !== 'super_admin') {
+    toast('Access Denied: Master Template Customizer is restricted to SuperAdmin.', 'err');
+    return;
+  }
   qrCurrentTab = tab;
   pageQuarterlyFeedback();
 }
@@ -242,6 +331,8 @@ function renderQrActiveTab() {
     renderQrTeamReviewsView(area);
   } else if (qrCurrentTab === 'templateBuilder') {
     renderQrTemplateBuilderView(area);
+  } else if (qrCurrentTab === 'templateGallery') {
+    renderQrTemplateGalleryView(area);
   } else if (qrCurrentTab === 'fullView') {
     renderQrFullPageView(area);
   }
@@ -491,6 +582,7 @@ function updateKpiChallenges(idx, val) { qrKpiState[idx].challenges = val; }
 // -----------------------------------------------------------------------
 function renderSkillMatrixStep(container, isLocked = false) {
   let list = qrSkillMatrixState;
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
 
   if (qrSkillCategoryFilter !== 'ALL') {
     list = list.filter(s => s.category === qrSkillCategoryFilter);
@@ -508,20 +600,41 @@ function renderSkillMatrixStep(container, isLocked = false) {
     <div class="card mb20">
       <div class="card-header" style="flex-wrap:wrap;gap:12px">
         <div>
-          <div class="card-title">🧩 Technical &amp; Functional Skill Matrix</div>
-          <div class="card-sub">Evaluate proficiency across core competency tracks and flag training requirements</div>
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            <span>🧩 Technical &amp; Functional Skill Matrix</span>
+            <span class="badge badge-admin" style="font-size:11px">${qrSkillMatrixState.length} Skills Configured</span>
+          </div>
+          <div class="card-sub">Evaluate proficiency across core competency tracks, set expectation levels, and flag training requirements</div>
         </div>
 
-        <!-- FILTERS & TEAM SELECTOR BAR -->
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;background:var(--s2);padding:4px 10px;border-radius:8px;border:1px solid var(--border)">
-            <span style="font-size:11px;font-weight:700;color:var(--t3)">Team:</span>
-            <select class="form-input" style="padding:4px 8px;font-size:12px;font-weight:700;width:auto;height:auto;border-radius:6px" onchange="onQrFormTeamChange(this.value)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}>
-              ${allTeams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
-            </select>
-          </div>
+        <!-- ACTION BUTTONS: TEMPLATE PICKER & INLINE CUSTOM SKILL ADDITION -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${canSeeAll() ? `
+            <button class="btn btn-ghost btn-sm" onclick="openLoadSkillTemplateModal()" ${isLocked ? 'disabled style="opacity:0.65;cursor:not-allowed"' : ''}>
+              📋 Load / Apply Skill Template
+            </button>
+          ` : ''}
+          <button class="btn btn-primary btn-sm" onclick="openAddInlineCustomSkillModal()" ${isLocked ? 'disabled style="opacity:0.65;cursor:not-allowed"' : ''}>
+            ➕ Add Custom Skill / Skillset
+          </button>
+        </div>
+      </div>
 
-          <input type="text" class="form-input" style="padding:6px 12px;font-size:12px;width:170px;height:auto"
+      <!-- FILTERS & TEAM SELECTOR BAR -->
+      <div style="padding:12px 20px;background:var(--s2);border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase">Target Team:</span>
+          ${canSeeAll() ? `
+            <select class="form-input" style="padding:4px 10px;font-size:12px;font-weight:700;width:auto;height:auto;border-radius:6px" onchange="onQrFormTeamChange(this.value)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}>
+              ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+          ` : `
+            <span class="badge badge-manager-role" style="font-size:12px;font-weight:700;padding:4px 10px">🏷️ ${escapeHtml(teams.find(t => t.id === qrSelectedTeamId)?.name || 'My Assigned Team')}</span>
+          `}
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" class="form-input" style="padding:6px 12px;font-size:12px;width:180px;height:auto"
             placeholder="🔍 Search skills..." value="${escapeHtml(qrSkillSearchQuery)}" oninput="onQrSkillSearch(this.value)">
 
           <select class="form-input" style="padding:6px 12px;font-size:12px;width:auto;height:auto" onchange="onQrSkillCategoryFilter(this.value)">
@@ -530,53 +643,77 @@ function renderSkillMatrixStep(container, isLocked = false) {
           </select>
         </div>
       </div>
-      <div class="card-body" style="padding:0">
+
+      <div class="card-body" style="padding:0;overflow-x:auto">
         <table class="data-table">
           <thead>
             <tr style="background:var(--s2)">
-              <th>Category</th>
-              <th>Competency Skill</th>
-              <th>Domain Track / Scope</th>
-              <th>Proficiency Rating</th>
-              <th>Training Request</th>
-              <th>Accomplishment Notes</th>
+              <th style="width:50px;text-align:center">S. No.</th>
+              <th style="min-width:180px">Competency Category</th>
+              <th style="min-width:220px">Skillset / Skill Item</th>
+              <th style="min-width:120px">Applicable</th>
+              <th style="min-width:190px">Expectation &amp; Rating Level</th>
+              <th style="min-width:140px">Training Request</th>
+              <th style="min-width:200px">Accomplishment Notes</th>
             </tr>
           </thead>
           <tbody>
             ${list.length ? list.map((s, idx) => {
               const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
               const realIdx = qrSkillMatrixState.findIndex(x => x.id === s.id || x.skill === s.skill);
+              const isApplicable = s.applicable !== false && s.applicable !== 'NO';
+              
               return `
-                <tr>
-                  <td><span class="badge badge-admin" style="font-size:10px">${escapeHtml(s.category)}</span></td>
-                  <td style="font-weight:700;color:var(--text)">${escapeHtml(s.skill)}</td>
+                <tr style="${!isApplicable ? 'opacity:0.55;background:var(--s2)' : ''}">
+                  <td style="text-align:center;font-weight:700;color:var(--t3);font-size:12px">${idx + 1}</td>
                   <td>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <span class="badge badge-admin" style="font-size:10px;white-space:normal;text-align:left;display:inline-block">${escapeHtml(s.category)}</span>
+                  </td>
+                  <td>
+                    <div style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(s.skill)}</div>
+                    ${s.description ? `<div style="font-size:11px;color:var(--t3);margin-top:3px;line-height:1.3">🎯 <strong>Target:</strong> ${escapeHtml(s.description)}</div>` : ''}
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
                       ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${escapeHtml(sp)}</span>`).join('')}
                     </div>
                   </td>
                   <td>
-                    <select class="form-input" style="padding:4px 8px;font-size:12px;width:auto;height:auto;font-weight:700;color:var(--a1)" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600">
+                      <input type="checkbox" ${isApplicable ? 'checked' : ''} ${isLocked ? 'disabled' : ''}
+                        onchange="toggleSkillApplicable(${realIdx}, this.checked)">
+                      <span style="color:${isApplicable ? 'var(--a3)' : 'var(--t3)'}">${isApplicable ? 'Yes (Applicable)' : 'No (N/A)'}</span>
+                    </label>
+                  </td>
+                  <td>
+                    <select class="form-input" style="padding:4px 8px;font-size:12px;width:100%;font-weight:700;color:var(--a1)" ${isLocked || !isApplicable ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
                       onchange="updateSkillRating(${realIdx}, this.value)">
-                      ${[5, 4, 3, 2, 1].map(r => `<option value="${r}" ${s.selfRating===r?'selected':''}>⭐ ${r} / 5</option>`).join('')}
+                      <option value="5" ${s.selfRating===5?'selected':''}>⭐ Outstanding (Exceeds +)</option>
+                      <option value="4" ${s.selfRating===4?'selected':''}>🌟 Exceed Expectation</option>
+                      <option value="3" ${s.selfRating===3?'selected':''}>✅ Meet Expectation</option>
+                      <option value="2" ${s.selfRating===2?'selected':''}>📈 Developing / Target</option>
+                      <option value="1" ${s.selfRating===1?'selected':''}>⚠️ Unsatisfactory</option>
                     </select>
                   </td>
                   <td>
-                    <button class="btn btn-sm ${s.trainingRequired==='YES'?'btn-primary':'btn-ghost'}" style="padding:2px 8px;font-size:11px" ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                    <button class="btn btn-sm ${s.trainingRequired==='YES'?'btn-primary':'btn-ghost'}" style="padding:3px 8px;font-size:11px;width:100%" ${isLocked || !isApplicable ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
                       onclick="toggleTrainingRequired(${realIdx})">
                       ${s.trainingRequired==='YES'?'🎓 Training Requested':'No Request'}
                     </button>
                   </td>
                   <td>
-                    <input type="text" class="form-input" style="padding:4px 8px;font-size:12px" placeholder="Notes..." ${isLocked ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
+                    <input type="text" class="form-input" style="padding:4px 8px;font-size:12px;width:100%" placeholder="Notes &amp; accomplishments..." ${isLocked || !isApplicable ? 'disabled style="opacity:0.75;cursor:not-allowed"' : ''}
                       value="${escapeHtml(s.comments || '')}" onchange="updateSkillComments(${realIdx}, this.value)">
                   </td>
                 </tr>
               `;
             }).join('') : `
               <tr>
-                <td colspan="6" style="text-align:center;padding:24px;color:var(--t3)">
-                  No skill templates configured for this team yet. Use <strong>Master Template Customizer</strong> to add custom skills.
+                <td colspan="7" style="text-align:center;padding:32px;color:var(--t3)">
+                  <div style="font-size:14px;font-weight:700;margin-bottom:6px">No skills loaded for your team review yet.</div>
+                  <div style="font-size:12px;margin-bottom:12px">Contact your HR / Manager or click below to add custom skills.</div>
+                  <div style="display:flex;gap:8px;justify-content:center">
+                    ${canSeeAll() ? `<button class="btn btn-primary btn-sm" onclick="openLoadSkillTemplateModal()">📋 Load Master Skill Template</button>` : ''}
+                    <button class="btn btn-ghost btn-sm" onclick="openAddInlineCustomSkillModal()">➕ Add Custom Skill</button>
+                  </div>
                 </td>
               </tr>
             `}
@@ -588,6 +725,9 @@ function renderSkillMatrixStep(container, isLocked = false) {
 }
 
 async function onQrFormTeamChange(teamId) {
+  if (!canSeeAll()) {
+    return toast('Access Denied: Team selection is restricted to HR and Admins.', 'err');
+  }
   qrSelectedTeamId = teamId;
   try {
     const templates = await API.getSkillTemplates(teamId);
@@ -595,6 +735,7 @@ async function onQrFormTeamChange(teamId) {
       id: t.id,
       category: t.category,
       skill: t.skill_name,
+      description: t.description || '',
       scope: t.scope || (t.is_backend && t.is_frontend ? 'Backend, Frontend' : t.is_backend ? 'Backend' : t.is_frontend ? 'Frontend' : 'General'),
       selfRating: 4,
       comments: '',
@@ -625,6 +766,478 @@ function updateSkillComments(idx, val) { qrSkillMatrixState[idx].comments = val;
 function toggleTrainingRequired(idx) {
   qrSkillMatrixState[idx].trainingRequired = qrSkillMatrixState[idx].trainingRequired === 'YES' ? 'NO' : 'YES';
   renderSkillMatrixStep(document.getElementById('qrStepBody'));
+}
+
+function toggleSkillApplicable(idx, checked) {
+  if (qrSkillMatrixState[idx]) {
+    qrSkillMatrixState[idx].applicable = checked;
+    renderSkillMatrixStep(document.getElementById('qrStepBody'));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INLINE CUSTOM SKILL ADDITION MODAL
+// ═══════════════════════════════════════════════════════════════════════
+function openAddInlineCustomSkillModal() {
+  document.getElementById('modalTitle').textContent = '➕ Add Custom Skill / Skillset';
+  document.getElementById('modalSub').textContent = 'Add a new skill item to your active Quarterly Assessment';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-size:12px;color:var(--t2)">
+      💡 <b>Custom Skill Item:</b> This skill will be immediately added to your active quarterly evaluation form and can be optionally saved to your team's master template.
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">Competency Category *</label>
+      <input type="text" id="inlineSkillCat" class="form-input" placeholder="e.g. 5G Core Protocols, Automation, Performance" list="categoryList">
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">Skill Name / Skillset Item *</label>
+      <input type="text" id="inlineSkillName" class="form-input" placeholder="e.g. Wireshark PCAP Analysis, Shell Scripting, REST API">
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">Scope / Domain Track Tags</label>
+      <input type="text" id="inlineSkillScope" class="form-input" placeholder="e.g. QA, Automation, 5G Core, Security">
+    </div>
+
+    <div class="form-group mb16">
+      <label class="switch"><input type="checkbox" id="inlineSaveToTeam" checked><span class="slider"></span></label>
+      <span style="font-size:12px;color:var(--t2);margin-left:8px;font-weight:600">Save to Team's Master Template permanently</span>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInlineCustomSkill()">✨ Add Skill Item</button>
+    </div>
+  `;
+
+  openModal();
+}
+
+async function submitInlineCustomSkill() {
+  const cat = v('inlineSkillCat');
+  const name = v('inlineSkillName');
+  const scope = v('inlineSkillScope') || 'Custom QA';
+  const saveToTeam = document.getElementById('inlineSaveToTeam')?.checked;
+
+  if (!cat || !name) return toast('Please enter both Category and Skill Name', 'warn');
+
+  const newSkillObj = {
+    id: 'st-custom-' + Date.now(),
+    category: cat.trim(),
+    skill: name.trim(),
+    scope: scope.trim(),
+    applicable: true,
+    selfRating: 4,
+    comments: '',
+    trainingRequired: 'NO',
+    managerRating: 0,
+    managerComments: ''
+  };
+
+  qrSkillMatrixState.push(newSkillObj);
+
+  if (saveToTeam) {
+    try {
+      await API.addSkillTemplate({
+        team_id: qrSelectedTeamId,
+        category: cat.trim(),
+        skill_name: name.trim(),
+        scope: scope.trim()
+      });
+      toast('✅ Skill added to active review and saved to team template!', 'success');
+    } catch(e) {
+      console.warn('Error saving skill template to team:', e);
+      toast('Added skill to active review!', 'info');
+    }
+  } else {
+    toast('✅ Custom skill added to active review!', 'success');
+  }
+
+  closeModal();
+  renderSkillMatrixStep(document.getElementById('qrStepBody'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MASTER TEMPLATE PICKER & APPLICATION MODAL
+// ═══════════════════════════════════════════════════════════════════════
+const TEMPLATE_ICONS = {
+  'QA / Quality Assurance & Testing Template': '🧪',
+  'SDN / Backend Platform Template': '⚙️',
+  'Frontend Engineering Template': '🎨',
+  'Growth Marketing Template': '📣',
+  'HR Operations Template': '🤝',
+  'Product & Design Template': '✏️',
+  'MarTech & Web Engineering Template': '🌐',
+  'Marketing & Demand Generation Template': '🎯',
+  'Graphic Design & Motion Graphics Template': '🖌️'
+};
+
+async function openLoadSkillTemplateModal() {
+  document.getElementById('modalTitle').textContent = '📋 Load Skill Matrix Template';
+  document.getElementById('modalSub').textContent = 'Select a pre-built template (e.g. QA Skill Matrix) or custom template to apply to your active quarterly review';
+  document.getElementById('modalBody').innerHTML = `<div class="loading"><div class="spinner"></div> Loading master templates library...</div>`;
+  openModal();
+
+  try {
+    const templates = await API.getMasterTemplates();
+
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+
+    document.getElementById('modalBody').innerHTML = `
+      ${canSeeAll() ? `
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="font-weight:700;font-size:12px;color:var(--text)">🏷️ Select Target Team to Assign Template:</div>
+          <select id="loadTplTargetTeamSel" class="form-input" style="padding:4px 10px;font-size:12px;font-weight:700;width:auto;height:auto;border-radius:8px">
+            ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+          </select>
+        </div>
+      ` : `
+        <div style="background:rgba(79,70,229,0.07);border:1px solid rgba(79,70,229,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--a1);font-weight:600">
+          ⚡ Select a template below to instantly populate your skill matrix.
+        </div>
+      `}
+
+      <div style="display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px">
+        ${templates.map((t, i) => {
+          const emoji = TEMPLATE_ICONS[t.template_name] || '📋';
+          const gradColors = ['rgba(79,70,229,0.08)', 'rgba(14,165,233,0.08)', 'rgba(16,185,129,0.08)', 'rgba(245,158,11,0.08)', 'rgba(236,72,153,0.08)', 'rgba(139,92,246,0.08)'];
+          const borderColors = ['rgba(79,70,229,0.3)', 'rgba(14,165,233,0.3)', 'rgba(16,185,129,0.3)', 'rgba(245,158,11,0.3)', 'rgba(236,72,153,0.3)', 'rgba(139,92,246,0.3)'];
+          const bg = gradColors[i % gradColors.length];
+          const border = borderColors[i % borderColors.length];
+          return `
+            <div style="background:${bg};border:1.5px solid ${border};border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <div style="display:flex;align-items:center;gap:12px;flex:1">
+                <div style="font-size:28px;line-height:1">${emoji}</div>
+                <div>
+                  <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:3px">${escapeHtml(t.template_name)}</div>
+                  <div style="font-size:11px;color:var(--t3)">
+                    <strong>${t.item_count} Skills</strong> across <strong>${t.category_count} Categories</strong>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                <button class="btn btn-ghost btn-sm" onclick="applySelectedTemplateToReview('${escapeHtml(t.template_name)}')" style="font-size:11px">
+                  ✅ Apply to My Review
+                </button>
+                ${canSeeAll() ? `
+                  <button class="btn btn-primary btn-sm" onclick="applySelectedTemplateToTeam('${escapeHtml(t.template_name)}', v('loadTplTargetTeamSel') || '${qrSelectedTeamId}')" style="font-size:11px">
+                    🏷️ Assign to Team
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+        ${canSeeAll() ? `<button class="btn btn-ghost btn-sm" onclick="openCreateCustomTemplateModal()">✨ Create New Custom Template</button>` : '<div></div>'}
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('modalBody').innerHTML = `<div class="alert alert-err">Error loading templates: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TEMPLATE PREVIEW MODAL (Triggered from template gallery card click)
+// ═══════════════════════════════════════════════════════════════════════
+async function openTemplatePreviewModal(templateName) {
+  document.getElementById('modalTitle').textContent = `📋 ${templateName}`;
+  document.getElementById('modalSub').textContent = 'Preview all skills in this template and apply it to your quarterly assessment';
+  document.getElementById('modalBody').innerHTML = `<div class="loading"><div class="spinner"></div> Loading template skills...</div>`;
+  openModal();
+
+  try {
+    const items = await API.request(`/api/skill-templates?template_name=${encodeURIComponent(templateName)}`);
+    if (!items || !items.length) {
+      document.getElementById('modalBody').innerHTML = `<div style="text-align:center;padding:30px;color:var(--t3)">No skills found in this template.</div>`;
+      return;
+    }
+
+    // Group by category
+    const byCategory = {};
+    items.forEach(s => {
+      const cat = s.category || 'General';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(s);
+    });
+
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+
+    document.getElementById('modalBody').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:12px;color:var(--t2)">
+          <strong>${items.length} skills</strong> across <strong>${Object.keys(byCategory).length} categories</strong>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="applySelectedTemplateToReview('${escapeHtml(templateName)}')">
+            ✅ Apply to My Active Review
+          </button>
+          ${canSeeAll() ? `
+            <div style="display:inline-flex;align-items:center;gap:6px;background:var(--s2);padding:4px 10px;border-radius:10px;border:1px solid var(--border)">
+              <span style="font-size:11px;font-weight:700;color:var(--t3)">Target Team:</span>
+              <select id="previewAssignTeamSel" class="form-input" style="padding:4px 8px;font-size:11px;font-weight:700;width:auto;height:auto;border-radius:6px">
+                ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="applySelectedTemplateToTeam('${escapeHtml(templateName)}', v('previewAssignTeamSel'))" style="font-size:11px">
+                🏷️ Assign to Selected Team
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div style="max-height:480px;overflow-y:auto;padding-right:4px">
+        ${Object.entries(byCategory).map(([cat, skills]) => `
+          <div style="margin-bottom:14px">
+            <div style="font-weight:800;font-size:12px;color:var(--a1);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;padding:4px 10px;background:rgba(79,70,229,0.08);border-radius:6px;display:inline-block">${escapeHtml(cat)}</div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              ${skills.map(s => {
+                const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
+                return `
+                  <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:var(--s2);border-radius:8px;border:1px solid var(--border)">
+                    <span style="font-size:13px;margin-top:1px">🔹</span>
+                    <div style="flex:1">
+                      <div style="font-weight:700;font-size:12px;color:var(--text)">${escapeHtml(s.skill_name)}</div>
+                      ${s.description ? `<div style="font-size:11px;color:var(--t3);margin-top:2px;line-height:1.3">🎯 <strong>Target:</strong> ${escapeHtml(s.description)}</div>` : ''}
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;flex-shrink:0">
+                      ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}" style="font-size:9px">${escapeHtml(sp)}</span>`).join('')}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${canSeeAll() ? `
+            <span style="font-size:11px;font-weight:700;color:var(--t3)">Assign to Team:</span>
+            <select id="previewAssignTeamSelBtm" class="form-input" style="padding:4px 8px;font-size:11px;font-weight:700;width:auto;height:auto;border-radius:6px">
+              ${teams.map(t => `<option value="${t.id}" ${qrSelectedTeamId===t.id?'selected':''}>🏷️ ${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="applySelectedTemplateToTeam('${escapeHtml(templateName)}', v('previewAssignTeamSelBtm'))">
+              🏷️ Assign to Selected Team
+            </button>
+          ` : `
+            <button class="btn btn-primary" onclick="applySelectedTemplateToReview('${escapeHtml(templateName)}')">
+              ✅ Apply to My Review &amp; Close
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('modalBody').innerHTML = `<div style="color:var(--a4)">Error loading template: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function applySelectedTemplateToReview(templateName) {
+  try {
+    const items = await API.request(`/api/skill-templates?template_name=${encodeURIComponent(templateName)}`);
+    if (!items || !items.length) {
+      return toast(`No items found in template '${templateName}'`, 'warn');
+    }
+
+    qrSkillMatrixState = items.map(t => ({
+      id: t.id,
+      category: t.category,
+      skill: t.skill_name,
+      scope: t.scope || 'General',
+      applicable: true,
+      selfRating: 4,
+      comments: '',
+      trainingRequired: 'NO',
+      managerRating: 0,
+      managerComments: ''
+    }));
+
+    closeModal();
+    renderSkillMatrixStep(document.getElementById('qrStepBody'));
+    toast(`✅ Loaded '${templateName}' (${items.length} skills) into active review!`, 'success');
+  } catch(err) {
+    toast(`Failed to load template: ${err.message}`, 'err');
+  }
+}
+
+async function applySelectedTemplateToTeam(templateName, teamId) {
+  if (!canSeeAll()) {
+    return toast('Access Denied: Only Super Admin and HR (Admin) can assign templates to teams.', 'err');
+  }
+  try {
+    const res = await API.applyTemplateToTeam(templateName, teamId);
+    toast(res.message || `Template '${templateName}' applied to team!`, 'success');
+    await onQrFormTeamChange(teamId);
+    closeModal();
+  } catch(err) {
+    toast(`Failed to apply template to team: ${err.message}`, 'err');
+  }
+}
+
+function openCreateCustomTemplateModal() {
+  if (!canSeeAll()) {
+    return toast('Access Denied: Only Super Admin and HR (Admin) can create custom master templates.', 'err');
+  }
+  document.getElementById('modalTitle').textContent = '✨ Create New Custom Skill Matrix Template';
+  document.getElementById('modalSub').textContent = 'Build a brand new skill matrix template from scratch with your own categories and skills';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-group mb16">
+      <label class="form-label">Template Name *</label>
+      <input type="text" id="newMasterTplName" class="form-input" placeholder="e.g. DevOps & Cloud Infrastructure Template">
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">Clone From Existing Template (Optional)</label>
+      <select id="newMasterTplClone" class="form-input" onchange="onCloneSourceChange(this.value)">
+        <option value="">— Start Blank (from scratch) —</option>
+        <option value="QA / Quality Assurance &amp; Testing Template">QA / Quality Assurance &amp; Testing Template</option>
+        <option value="SDN / Backend Platform Template">SDN / Backend Platform Template</option>
+        <option value="Frontend Engineering Template">Frontend Engineering Template</option>
+        <option value="Growth Marketing Template">Growth Marketing Template</option>
+        <option value="HR Operations Template">HR Operations Template</option>
+        <option value="Product &amp; Design Template">Product &amp; Design Template</option>
+        <option value="MarTech &amp; Web Engineering Template">MarTech &amp; Web Engineering Template</option>
+        <option value="Marketing &amp; Demand Generation Template">Marketing &amp; Demand Generation Template</option>
+        <option value="Graphic Design &amp; Motion Graphics Template">Graphic Design &amp; Motion Graphics Template</option>
+      </select>
+    </div>
+
+    <div class="form-group mb16">
+      <label class="form-label">Target Team (Optional Initial Assignment)</label>
+      <select id="newMasterTplTeam" class="form-input">
+        <option value="">— Unassigned (Master Library) —</option>
+        ${allTeams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+    </div>
+
+    <!-- INLINE SKILL BUILDER FOR BLANK TEMPLATE -->
+    <div id="blankSkillBuilderSection" style="display:block">
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>📋 Add Skills to New Template</span>
+        <button class="btn btn-ghost btn-sm" onclick="addBlankTemplateSkillRow()">+ Add Skill Row</button>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;font-size:11px;color:var(--t3)">
+        💡 Add at least one skill category and skill name to create a meaningful template. You can always add more skills later from the Master Template Customizer.
+      </div>
+      <div id="blankSkillRows" style="display:flex;flex-direction:column;gap:8px">
+        <div class="blank-skill-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center">
+          <input type="text" class="form-input bsr-cat" placeholder="Category (e.g. Core Skills)" style="font-size:12px">
+          <input type="text" class="form-input bsr-name" placeholder="Skill Name (e.g. REST APIs)" style="font-size:12px">
+          <input type="text" class="form-input bsr-scope" placeholder="Scope Tags (e.g. Backend, QA)" style="font-size:12px">
+          <button class="btn btn-danger btn-sm" onclick="this.closest('.blank-skill-row').remove()" style="padding:4px 8px">✕</button>
+        </div>
+        <div class="blank-skill-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center">
+          <input type="text" class="form-input bsr-cat" placeholder="Category" style="font-size:12px">
+          <input type="text" class="form-input bsr-name" placeholder="Skill Name" style="font-size:12px">
+          <input type="text" class="form-input bsr-scope" placeholder="Scope Tags" style="font-size:12px">
+          <button class="btn btn-danger btn-sm" onclick="this.closest('.blank-skill-row').remove()" style="padding:4px 8px">✕</button>
+        </div>
+      </div>
+      <!-- Column headers -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;padding:4px 0 0 0">
+        <span style="font-size:10px;color:var(--t3);font-weight:700">CATEGORY *</span>
+        <span style="font-size:10px;color:var(--t3);font-weight:700">SKILL NAME *</span>
+        <span style="font-size:10px;color:var(--t3);font-weight:700">SCOPE / DOMAIN TAGS</span>
+        <span></span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateCustomTemplate()">✨ Create Template &amp; Save</button>
+    </div>
+  `;
+  openModal();
+}
+
+function onCloneSourceChange(sourceName) {
+  const section = document.getElementById('blankSkillBuilderSection');
+  if (section) {
+    section.style.display = sourceName ? 'none' : 'block';
+  }
+}
+
+function addBlankTemplateSkillRow() {
+  const container = document.getElementById('blankSkillRows');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'blank-skill-row';
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:8px;align-items:center';
+  row.innerHTML = `
+    <input type="text" class="form-input bsr-cat" placeholder="Category" style="font-size:12px">
+    <input type="text" class="form-input bsr-name" placeholder="Skill Name" style="font-size:12px">
+    <input type="text" class="form-input bsr-scope" placeholder="Scope Tags" style="font-size:12px">
+    <button class="btn btn-danger btn-sm" onclick="this.closest('.blank-skill-row').remove()" style="padding:4px 8px">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+async function submitCreateCustomTemplate() {
+  if (!canSeeAll()) {
+    return toast('Access Denied: Only Super Admin and HR (Admin) can create custom master templates.', 'err');
+  }
+  const tName = v('newMasterTplName');
+  const cloneSource = v('newMasterTplClone');
+  const targetTeamId = v('newMasterTplTeam') || null;
+
+  if (!tName) return toast('Please enter a Template Name', 'warn');
+
+  try {
+    if (cloneSource) {
+      // Clone from an existing template
+      await API.cloneTemplate(cloneSource, tName);
+      if (targetTeamId) {
+        await API.applyTemplateToTeam(tName, targetTeamId);
+      }
+      toast(`✅ Template '${tName}' cloned from '${cloneSource}' successfully!`, 'success');
+    } else {
+      // Create from blank skill rows
+      const rows = document.querySelectorAll('.blank-skill-row');
+      const skills = [];
+      rows.forEach(row => {
+        const cat = row.querySelector('.bsr-cat')?.value?.trim();
+        const name = row.querySelector('.bsr-name')?.value?.trim();
+        const scope = row.querySelector('.bsr-scope')?.value?.trim() || 'General';
+        if (cat && name) skills.push({ category: cat, skill_name: name, scope });
+      });
+
+      if (!skills.length) return toast('Please add at least one skill with a category and name', 'warn');
+
+      // Create template by adding skills one by one with the template_name
+      for (const skill of skills) {
+        await API.request('/api/skill-templates/create-custom', {
+          method: 'POST',
+          body: JSON.stringify({
+            template_name: tName,
+            team_id: targetTeamId || 't-custom',
+            category: skill.category,
+            skill_name: skill.skill_name,
+            scope: skill.scope
+          })
+        }).catch(() => API.addSkillTemplate({
+          team_id: targetTeamId || 't-custom',
+          category: skill.category,
+          skill_name: skill.skill_name,
+          scope: skill.scope
+        }));
+      }
+      toast(`✅ Template '${tName}' created with ${skills.length} skills!`, 'success');
+    }
+
+    closeModal();
+    // Reload page to show new template
+    pageQuarterlyFeedback();
+  } catch(err) {
+    toast(`Error creating template: ${err.message}`, 'error');
+  }
 }
 
 async function saveQrForm(isDraft) {
@@ -1075,6 +1688,347 @@ async function unlockSubmissionByAdmin(reviewId, employeeName) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// TEAM SKILL MATRIX MANAGER (Template Gallery Tab — All users)
+// ═══════════════════════════════════════════════════════════════════════
+async function renderQrTemplateGalleryView(container) {
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading team skill matrix manager...</div>`;
+
+  try {
+    const masterTemplates = await API.getMasterTemplates();
+    const canManage = canSeeAll();
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+    const galleryTeamId = window.qrGallerySelectedTeamId || qrSelectedTeamId || (teams[0]?.id || 't-qa');
+    window.qrGallerySelectedTeamId = galleryTeamId;
+
+    const templateColors = [
+      { bg: 'linear-gradient(135deg,#4f46e5,#7c3aed)', light: 'rgba(79,70,229,0.08)', border: 'rgba(79,70,229,0.25)' },
+      { bg: 'linear-gradient(135deg,#0ea5e9,#0284c7)', light: 'rgba(14,165,233,0.08)', border: 'rgba(14,165,233,0.25)' },
+      { bg: 'linear-gradient(135deg,#10b981,#059669)', light: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)' },
+      { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', light: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
+      { bg: 'linear-gradient(135deg,#ec4899,#db2777)', light: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.25)' },
+      { bg: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', light: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.25)' }
+    ];
+
+    container.innerHTML = `
+      <!-- PAGE HEADER -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-weight:800;font-size:18px;color:var(--text)">🏷️ Team Skill Matrix Manager</div>
+          <div style="font-size:13px;color:var(--t3);margin-top:4px">
+            Select a team to view and manage their skill matrix — assign templates, add custom skills, or preview what team members see in their quarterly review
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          ${canManage ? `<button class="btn btn-ghost btn-sm" onclick="openCreateCustomTemplateModal()">✨ Create Custom Template</button>` : ''}
+        </div>
+      </div>
+
+      <!-- SPLIT LAYOUT: LEFT=TEAM MANAGER | RIGHT=TEMPLATE LIBRARY -->
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">
+
+        <!-- LEFT: TEAM SELECTOR + SKILLS TABLE -->
+        <div>
+          <!-- TEAM SELECTOR -->
+          <div style="background:var(--s1);border:1.5px solid var(--border);border-radius:16px;padding:18px;margin-bottom:18px;box-shadow:var(--card-shadow)">
+            <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              🏷️ Select Team
+              <span style="font-size:11px;font-weight:500;color:var(--t3)">&mdash; skills shown to team members in their quarterly review</span>
+            </div>
+            <div id="galleryTeamBtnContainer" style="display:flex;gap:8px;flex-wrap:wrap">
+              ${teams.map(t => {
+                const isSel = t.id === galleryTeamId;
+                return `<button onclick="onGalleryTeamSelect('${t.id}')" id="galBtn_${t.id}" class="gal-team-btn" style="padding:8px 14px;border-radius:10px;border:2px solid ${isSel?'var(--a1)':'var(--border)'};background:${isSel?'rgba(79,70,229,0.1)':'var(--s2)'};color:${isSel?'var(--a1)':'var(--text)'};font-weight:${isSel?'800':'600'};font-size:12px;cursor:pointer;transition:all 0.15s">${isSel?'\u2713 ':''}${escapeHtml(t.name)}</button>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- TEAM SKILLS AREA -->
+          <div id="galleryTeamSkillsArea">
+            <div class="loading"><div class="spinner"></div> Loading team skills...</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: MASTER TEMPLATE LIBRARY -->
+        <div style="position:sticky;top:20px">
+          <div style="font-weight:800;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            📚 Master Template Library
+            ${canManage ? `<span style="font-size:10px;font-weight:500;color:var(--t3)">— click to assign to selected team</span>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${masterTemplates.map((t, i) => {
+              const color = templateColors[i % templateColors.length];
+              const emoji = (TEMPLATE_ICONS && TEMPLATE_ICONS[t.template_name]) || '📋';
+              return `
+                <div style="background:var(--s1);border:1.5px solid ${color.border};border-radius:14px;overflow:hidden;box-shadow:var(--card-shadow)">
+                  <div style="background:${color.bg};padding:11px 14px;display:flex;align-items:center;gap:10px">
+                    <span style="font-size:22px;flex-shrink:0">${emoji}</span>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-weight:800;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.template_name)}</div>
+                      <div style="font-size:10px;color:var(--t3)">${t.item_count} skills &middot; ${t.category_count} categories</div>
+                    </div>
+                  </div>
+                  <div style="padding:9px 12px;display:flex;gap:6px">
+                    <button class="btn btn-ghost btn-sm" style="flex:1;font-size:11px" onclick="openTemplatePreviewModal('${escapeHtml(t.template_name)}')">👁️ Preview</button>
+                    ${canManage
+                      ? `<button class="btn btn-primary btn-sm" style="flex:1;font-size:11px" onclick="assignTemplateToGalleryTeam('${escapeHtml(t.template_name)}')">Assign to Team</button>`
+                      : `<button class="btn btn-primary btn-sm" style="flex:1;font-size:11px" onclick="applySelectedTemplateToReview('${escapeHtml(t.template_name)}');qrActiveStep=3;switchQrTab('form')">✅ Use in My Review</button>`
+                    }
+                  </div>
+                </div>
+              `;
+            }).join('')}
+
+            ${canManage ? `
+              <div style="background:var(--s2);border:2px dashed var(--border);border-radius:14px;padding:18px;text-align:center;cursor:pointer;transition:all 0.2s"
+                onclick="openCreateCustomTemplateModal()"
+                onmouseover="this.style.borderColor='var(--a1)'"
+                onmouseout="this.style.borderColor='var(--border)'">
+                <div style="font-size:22px;margin-bottom:4px">➕</div>
+                <div style="font-weight:700;font-size:12px;color:var(--a1)">Create Custom Template</div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    // Load skills for the default selected team
+    renderGalleryTeamSkills(galleryTeamId, canManage);
+
+  } catch (err) {
+    container.innerHTML = `<div class="card" style="color:var(--a4)">Error loading team skill matrix manager: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function onGalleryTeamSelect(teamId) {
+  window.qrGallerySelectedTeamId = teamId;
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  // Update button styles
+  document.querySelectorAll('.gal-team-btn').forEach(btn => {
+    const bId = btn.id.replace('galBtn_', '');
+    const isSel = bId === teamId;
+    const team = teams.find(t => t.id === bId);
+    btn.style.borderColor = isSel ? 'var(--a1)' : 'var(--border)';
+    btn.style.background = isSel ? 'rgba(79,70,229,0.1)' : 'var(--s2)';
+    btn.style.color = isSel ? 'var(--a1)' : 'var(--text)';
+    btn.style.fontWeight = isSel ? '800' : '600';
+    btn.textContent = isSel ? `\u2713 ${team?.name || bId}` : (team?.name || bId);
+  });
+  const area = document.getElementById('galleryTeamSkillsArea');
+  if (area) {
+    area.innerHTML = `<div class="loading"><div class="spinner"></div> Loading skills for team...</div>`;
+    await renderGalleryTeamSkills(teamId, canSeeAll());
+  }
+}
+
+async function renderGalleryTeamSkills(teamId, canManage) {
+  const area = document.getElementById('galleryTeamSkillsArea');
+  if (!area) return;
+  try {
+    const items = await API.getSkillTemplates(teamId);
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+    const team = teams.find(t => t.id === teamId);
+    const teamName = team?.name || 'Quality Assurance & Testing';
+    const cats = {};
+    (items || []).forEach(s => { if (!cats[s.category]) cats[s.category] = []; cats[s.category].push(s); });
+
+    area.innerHTML = `
+      <div style="background:var(--s1);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--card-shadow)">
+        <!-- HEADER -->
+        <div style="background:linear-gradient(135deg,rgba(79,70,229,0.07),rgba(6,182,212,0.04));padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-weight:800;font-size:15px;color:var(--text)">${escapeHtml(teamName)} &mdash; Skill Matrix</div>
+            <div style="font-size:12px;color:var(--t3);margin-top:2px">
+              ${items.length > 0
+                ? `<strong style="color:var(--a1)">${items.length} skills</strong> across <strong>${Object.keys(cats).length} categories</strong> &mdash; auto-loaded in every member's quarterly review`
+                : 'No skills assigned yet. Assign a master template or add custom skills below.'}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            ${canManage ? `<button class="btn btn-ghost btn-sm" onclick="openAddSkillToTeamModal('${teamId}')" style="font-size:12px">➕ Add Custom Skill</button>` : ''}
+            <button class="btn btn-primary btn-sm" onclick="loadTeamSkillsIntoMyReview('${teamId}')" style="font-size:12px">✅ Load into My Review</button>
+          </div>
+        </div>
+
+        <!-- SKILLS TABLE -->
+        ${items.length > 0 ? `
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr style="background:var(--s2)">
+                  <th style="width:36px;text-align:center">#</th>
+                  <th style="min-width:170px">Category</th>
+                  <th style="min-width:250px">Skill / Competency</th>
+                  <th style="min-width:150px">Domain / Scope Tags</th>
+                  ${canManage ? `<th style="width:80px;text-align:center">Actions</th>` : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((s, idx) => {
+                  const scopeParts = (s.scope || 'General').split(',').map(x => x.trim()).filter(Boolean);
+                  return `
+                    <tr>
+                      <td style="text-align:center;font-size:11px;color:var(--t3);font-weight:700">${idx + 1}</td>
+                      <td><span class="badge badge-admin" style="font-size:10px;white-space:normal">${escapeHtml(s.category)}</span></td>
+                      <td style="font-weight:700;color:var(--text);font-size:13px">${escapeHtml(s.skill_name)}</td>
+                      <td>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap">
+                          ${scopeParts.map(sp => `<span class="badge-scope ${getScopeClass(sp)}">${escapeHtml(sp)}</span>`).join('')}
+                        </div>
+                      </td>
+                      ${canManage ? `<td style="text-align:center"><button class="btn btn-sm" style="padding:2px 7px;font-size:10px;background:rgba(239,68,68,0.1);color:var(--err);border:1px solid rgba(239,68,68,0.25);border-radius:6px" onclick="removeSkillFromTeam('${s.id}','${teamId}')">🗑️</button></td>` : ''}
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : `
+          <div style="text-align:center;padding:40px 20px;color:var(--t3)">
+            <div style="font-size:38px;margin-bottom:10px">📬</div>
+            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:6px">No Skills Assigned to ${escapeHtml(teamName)}</div>
+            <div style="font-size:12px;max-width:380px;margin:0 auto 16px;line-height:1.5">
+              Use the <strong>Master Template Library</strong> panel on the right to assign a pre-built skill template to this team,
+              or click <strong>Add Custom Skill</strong> above to add individual skills.
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+  } catch (err) {
+    if (area) area.innerHTML = `<div style="padding:20px;color:var(--a4)">Error loading team skills: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function assignTemplateToGalleryTeam(templateName) {
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  const teamId = window.qrGallerySelectedTeamId || qrSelectedTeamId || (teams[0]?.id || 't-qa');
+  const team = teams.find(t => t.id === teamId);
+  const teamName = team?.name || 'this team';
+
+  document.getElementById('modalTitle').textContent = `🏷️ Assign Template to ${teamName}`;
+  document.getElementById('modalSub').textContent = 'Skills in this template will appear in every team member\'s quarterly review Step 3';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:6px">⚠️ Confirm Template Assignment</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.6">
+        Template: <strong>${escapeHtml(templateName)}</strong><br>
+        Target Team: <strong>${escapeHtml(teamName)}</strong><br>
+        <span style="color:var(--t3);margin-top:4px;display:block">This will replace existing skills for this team. Employees with <em>${escapeHtml(teamName)}</em> as their primary team will automatically see the new skills in their quarterly review.</span>
+      </div>
+    </div>
+    <div class="form-group mb12">
+      <label class="form-label" style="font-size:11px">Override Target Team (Optional)</label>
+      <select id="assignTplTeamSel" class="form-input" style="font-size:12px">
+        ${teams.map(t => `<option value="${t.id}" ${t.id === teamId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAssignTemplateToTeam('${escapeHtml(templateName)}')">✅ Confirm Assignment</button>
+    </div>
+  `;
+  openModal();
+}
+
+async function confirmAssignTemplateToTeam(templateName) {
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  const teamId = document.getElementById('assignTplTeamSel')?.value || window.qrGallerySelectedTeamId || qrSelectedTeamId || (teams[0]?.id || 't-qa');
+  const team = teams.find(t => t.id === teamId);
+  const teamName = team?.name || 'Team';
+  try {
+    closeModal();
+    const area = document.getElementById('galleryTeamSkillsArea');
+    if (area) area.innerHTML = `<div class="loading"><div class="spinner"></div> Assigning template...</div>`;
+    await API.applyTemplateToTeam(templateName, teamId);
+    window.qrGallerySelectedTeamId = teamId;
+    toast(`✅ "${templateName}" assigned to ${teamName}! All ${teamName} members will now see these skills.`, 'success');
+    await renderGalleryTeamSkills(teamId, canSeeAll());
+  } catch (err) {
+    toast(`Error assigning template: ${err.message}`, 'error');
+  }
+}
+
+function openAddSkillToTeamModal(teamId) {
+  const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+  const team = teams.find(t => t.id === teamId);
+  const teamName = team?.name || 'Team';
+  document.getElementById('modalTitle').textContent = `➕ Add Custom Skill to ${teamName}`;
+  document.getElementById('modalSub').textContent = 'This skill will appear in every team member\'s quarterly review Step 3 Skill Matrix';
+  document.getElementById('modalBody').innerHTML = `
+    <div style="background:rgba(79,70,229,0.07);border:1px solid rgba(79,70,229,0.2);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--a1)">
+      💡 Skills added here automatically appear in the <strong>Step 3 Skill Matrix</strong> for all <strong>${escapeHtml(teamName)}</strong> members.
+    </div>
+    <div class="form-group mb12">
+      <label class="form-label">Category *</label>
+      <input type="text" id="newTeamSkillCat" class="form-input" placeholder="e.g. Core Engineering, Cloud Skills, QA Practices">
+    </div>
+    <div class="form-group mb12">
+      <label class="form-label">Skill / Competency Name *</label>
+      <input type="text" id="newTeamSkillName" class="form-input" placeholder="e.g. Docker & Kubernetes, REST API Design, Test Planning">
+    </div>
+    <div class="form-group mb16">
+      <label class="form-label">Scope / Domain Tags <span style="font-weight:400;color:var(--t3)">(comma separated)</span></label>
+      <input type="text" id="newTeamSkillScope" class="form-input" placeholder="e.g. Backend, Cloud, QA">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSkillToTeam('${teamId}')">➕ Add to ${escapeHtml(teamName)}</button>
+    </div>
+  `;
+  openModal();
+}
+
+async function saveSkillToTeam(teamId) {
+  const cat = document.getElementById('newTeamSkillCat')?.value?.trim();
+  const name = document.getElementById('newTeamSkillName')?.value?.trim();
+  const scope = document.getElementById('newTeamSkillScope')?.value?.trim() || 'General';
+  if (!cat) return toast('Please enter a Category', 'warn');
+  if (!name) return toast('Please enter a Skill Name', 'warn');
+  try {
+    await API.addSkillTemplate({ team_id: teamId, category: cat, skill_name: name, scope });
+    closeModal();
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+    const team = teams.find(t => t.id === teamId);
+    toast(`✅ Skill "${name}" added to ${team?.name || 'team'}!`, 'success');
+    await renderGalleryTeamSkills(teamId, canSeeAll());
+  } catch (err) {
+    toast(`Error adding skill: ${err.message}`, 'error');
+  }
+}
+
+async function removeSkillFromTeam(skillId, teamId) {
+  try {
+    await API.deleteSkillTemplate(skillId);
+    toast('Skill removed from team.', 'info');
+    await renderGalleryTeamSkills(teamId, canSeeAll());
+  } catch (err) {
+    toast(`Error removing skill: ${err.message}`, 'error');
+  }
+}
+
+async function loadTeamSkillsIntoMyReview(teamId) {
+  try {
+    const items = await API.getSkillTemplates(teamId);
+    if (!items || !items.length) return toast('No skills assigned to this team yet. Assign a template first.', 'warn');
+    qrSkillMatrixState = items.map(t => ({
+      id: t.id, category: t.category, skill: t.skill_name,
+      scope: t.scope || 'General', selfRating: 4, comments: '',
+      trainingRequired: 'NO', managerRating: 0, managerComments: ''
+    }));
+    qrSelectedTeamId = teamId;
+    const teams = allTeams.length ? allTeams : MOCK_TEAMS;
+    const team = teams.find(t => t.id === teamId);
+    toast(`✅ Loaded ${items.length} skills from ${team?.name || 'team'} into your active review!`, 'success');
+    qrActiveStep = 3;
+    switchQrTab('form');
+  } catch (err) {
+    toast(`Error loading team skills: ${err.message}`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // TEMPLATE CUSTOMIZER (SUPER ADMIN DYNAMIC SCOPE BUILDER)
 // ═══════════════════════════════════════════════════════════════════════
 async function renderQrTemplateBuilderView(container) {
@@ -1224,12 +2178,14 @@ async function addCustomSkillTemplate() {
 
   try {
     await API.addSkillTemplate({
-      team_id: qrSelectedTeamId,
+      team_id: targetTeam,
       category: cat,
       skill_name: name,
       scope: scope
     });
-    toast('New skill added to team template!', 'success');
+    qrSelectedTeamId = targetTeam;
+    const teamObj = allTeams.find(t => t.id === targetTeam);
+    toast(`✅ New skill added to ${teamObj?.name || 'team'} template!`, 'success');
     renderQrTemplateBuilderView(document.getElementById('qrContentArea'));
   } catch (err) {
     toast(err.message, 'error');

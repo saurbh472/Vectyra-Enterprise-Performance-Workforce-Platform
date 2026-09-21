@@ -5,6 +5,7 @@ function selectFormType(type, el) {
   document.querySelectorAll('.type-card').forEach(c => c.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('formArea').innerHTML = buildForm(type);
+  checkAndRenderFeedbackLockStatus(type);
 }
 
 function buildForm(type) {
@@ -13,13 +14,21 @@ function buildForm(type) {
   if (formTpl && (formTpl.metrics?.length || formTpl.questions?.length)) {
     return buildStructuredForm(type, formTpl);
   }
+  const mySubmissions = (feedbackCache && feedbackCache.length) ? feedbackCache.filter(r => r.giver_id === currentProfile?.id) : [];
+  const getSubStatus = (uid) => {
+    const sub = mySubmissions.find(r => r.receiver_id === uid);
+    if (!sub) return '';
+    return sub.is_locked !== false ? ' 🔒 (Submitted & Locked)' : ' 🔓 (Unlocked)';
+  };
+
   return `<div class="form-wrap">
     <div class="form-head"><div class="form-head-title">${typeLabel(type)} Form</div></div>
     <div class="form-body">
+       <div id="fb_lock_notice" style="display:none;margin-bottom:16px;padding:14px;border-radius:10px;align-items:center"></div>
        <div class="form-group"><label class="form-label">Subject (Who is this review for?)</label>
-         <select class="form-input" id="fb_subject">
+         <select class="form-input" id="fb_subject" onchange="checkAndRenderFeedbackLockStatus('${type}')">
            <option value="">— Select a person —</option>
-           ${allUsers.filter(u => u.id !== currentProfile?.id).map(u => `<option value="${u.id}">${u.full_name} (${roleLabel(u.role)})</option>`).join('')}
+           ${allUsers.filter(u => u.id !== currentProfile?.id).map(u => `<option value="${u.id}">${escapeHtml(u.full_name)} (${roleLabel(u.role)})${getSubStatus(u.id)}</option>`).join('')}
          </select>
        </div>
       <div class="rating-group"><div class="rating-qlabel">Overall Rating</div>${fRating('rating_overall')}</div>
@@ -31,7 +40,7 @@ function buildForm(type) {
       </div>
     </div>
     <div class="form-foot" style="padding:16px 26px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <button class="btn btn-primary" onclick="submitFeedbackForm('${type}')">Submit Feedback →</button>
+      <button class="btn btn-primary" id="fb_submit_btn" onclick="submitFeedbackForm('${type}')">Submit Feedback →</button>
     </div>
   </div>`;
 }
@@ -41,6 +50,12 @@ function buildStructuredForm(type, tpl) {
   const questions = tpl.questions || [];
   const colors = { manager: 'var(--a1)', peer: 'var(--a3)', hr: 'var(--a2)', self: 'var(--a4)', '360': 'var(--a5)', exit: '#ca8a04' };
   const color = colors[type] || 'var(--a1)';
+  const mySubmissions = (feedbackCache && feedbackCache.length) ? feedbackCache.filter(r => r.giver_id === currentProfile?.id) : [];
+  const getSubStatus = (uid) => {
+    const sub = mySubmissions.find(r => r.receiver_id === uid);
+    if (!sub) return '';
+    return sub.is_locked !== false ? ' 🔒 (Submitted & Locked)' : ' 🔓 (Unlocked)';
+  };
 
   return `<div class="form-wrap">
     <div class="form-head" style="background:linear-gradient(135deg,rgba(79,70,229,.08),transparent)">
@@ -48,19 +63,20 @@ function buildStructuredForm(type, tpl) {
       <div style="font-size:12px;color:var(--t2)">Provide thorough ratings and constructive feedback</div>
     </div>
     <div class="form-body">
+      <div id="fb_lock_notice" style="display:none;margin-bottom:16px;padding:14px;border-radius:10px;align-items:center"></div>
       ${type === 'self' ? `
         <div class="form-group mb24" style="background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.2);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
           <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#e11d48,#be185d);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff">${avatarInitials(currentProfile?.full_name)}</div>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--text)">${currentProfile?.full_name}</div>
-            <div style="font-size:11px;color:var(--t3)">Self Assessment — This review is about you</div>
+            <div style="font-size:11px;color:var(--t3)">Self Assessment — This review is about you ${getSubStatus(currentProfile?.id)}</div>
           </div>
         </div>
         <input type="hidden" id="fb_subject" value="${currentProfile?.id}">
       ` : `
         <div class="form-group mb24">
           <label class="form-label" style="font-size:13px;font-weight:700">Subject (Who is this review for?)</label>
-          <select class="form-input" id="fb_subject">
+          <select class="form-input" id="fb_subject" onchange="checkAndRenderFeedbackLockStatus('${type}')">
             ${(() => {
               const pool = allUsers.filter(u => u.id !== currentProfile.id);
               if (type === 'manager') {
@@ -83,7 +99,7 @@ function buildStructuredForm(type, tpl) {
                 if (teamManagers.length) {
                   html += `<optgroup label="🌟 Your Team Manager & Leadership">`;
                   html += teamManagers.map(u =>
-                    `<option value="${u.id}" ${u.id === defaultSelectId ? 'selected' : ''}>${u.full_name} (${roleLabel(u.role)}${u.id === explicitMgr?.id ? ' • Team Manager' : ' • Team Leadership'})</option>`
+                    `<option value="${u.id}" ${u.id === defaultSelectId ? 'selected' : ''}>${u.full_name} (${roleLabel(u.role)}${u.id === explicitMgr?.id ? ' • Team Manager' : ' • Team Leadership'})${getSubStatus(u.id)}</option>`
                   ).join('');
                   html += `</optgroup>`;
                 }
@@ -91,7 +107,7 @@ function buildStructuredForm(type, tpl) {
                 if (otherManagers.length) {
                   html += `<optgroup label="🏢 Other Managers & Leadership">`;
                   html += otherManagers.map(u =>
-                    `<option value="${u.id}">${u.full_name} (${roleLabel(u.role)}${u.department ? ' • ' + u.department : ''})</option>`
+                    `<option value="${u.id}">${u.full_name} (${roleLabel(u.role)}${u.department ? ' • ' + u.department : ''})${getSubStatus(u.id)}</option>`
                   ).join('');
                   html += `</optgroup>`;
                 }
@@ -101,7 +117,7 @@ function buildStructuredForm(type, tpl) {
 
               if (!pool.length) return `<option value="">No eligible people found</option>`;
               return '<option value="">— Select a person —</option>' +
-                pool.map(u => `<option value="${u.id}">${u.full_name} (${roleLabel(u.role)}${u.department ? ' • ' + u.department : ''})</option>`).join('');
+                pool.map(u => `<option value="${u.id}">${u.full_name} (${roleLabel(u.role)}${u.department ? ' • ' + u.department : ''})${getSubStatus(u.id)}</option>`).join('');
             })()}
           </select>
         </div>
@@ -171,9 +187,215 @@ function buildStructuredForm(type, tpl) {
       </div>
     </div>
     <div class="form-foot" style="padding:16px 26px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <button class="btn btn-primary" onclick="submitFeedbackForm('${type}')" style="background:${color}">Submit ${typeLabel(type)} Feedback →</button>
+      <button class="btn btn-primary" id="fb_submit_btn" onclick="submitFeedbackForm('${type}')" style="background:${color}">Submit ${typeLabel(type)} Feedback →</button>
     </div>
   </div>`;
+}
+
+async function checkAndRenderFeedbackLockStatus(type) {
+  const subjectEl = document.getElementById('fb_subject');
+  const subjectId = subjectEl ? subjectEl.value : null;
+  const lockNotice = document.getElementById('fb_lock_notice');
+  const submitBtn = document.getElementById('fb_submit_btn');
+  const formBody = document.querySelector('.form-wrap .form-body');
+
+  if (!lockNotice && !submitBtn) return;
+
+  if (!subjectId) {
+    if (lockNotice) lockNotice.style.display = 'none';
+    if (formBody) {
+      formBody.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.id !== 'fb_subject') {
+          el.disabled = false;
+          el.style.opacity = '1';
+          el.style.cursor = 'auto';
+        }
+      });
+      const starArea = formBody.querySelectorAll('.stars');
+      starArea.forEach(sa => {
+        sa.style.pointerEvents = 'auto';
+        sa.style.opacity = '1';
+      });
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.innerHTML = `Submit ${typeLabel(type)} Feedback →`;
+    }
+    return;
+  }
+
+  const list = (feedbackCache && feedbackCache.length) ? feedbackCache : await fetchFeedback();
+  // Lock per person (giver_id + receiver_id) regardless of feedback_type
+  const existing = list.find(r => r.giver_id === currentProfile?.id && r.receiver_id === subjectId);
+
+  if (!existing) {
+    if (lockNotice) lockNotice.style.display = 'none';
+    if (formBody) {
+      formBody.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.id !== 'fb_subject') {
+          el.disabled = false;
+          el.style.opacity = '1';
+          el.style.cursor = 'auto';
+        }
+      });
+      const starArea = formBody.querySelectorAll('.stars');
+      starArea.forEach(sa => {
+        sa.style.pointerEvents = 'auto';
+        sa.style.opacity = '1';
+      });
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.innerHTML = `Submit ${typeLabel(type)} Feedback →`;
+    }
+    return;
+  }
+
+  // Pre-fill existing submission values
+  prefillFeedbackForm(existing);
+
+  const subjObj = allUsers.find(u => u.id === subjectId);
+  const subjName = subjObj ? subjObj.full_name : 'this colleague';
+
+  if (existing.is_locked !== false) {
+    // LOCKED STATE: Disable all inputs & star ratings
+    if (lockNotice) {
+      lockNotice.style.display = 'flex';
+      lockNotice.style.background = 'rgba(239, 68, 68, 0.08)';
+      lockNotice.style.border = '1px solid rgba(239, 68, 68, 0.25)';
+      lockNotice.style.color = '#b91c1c';
+      lockNotice.innerHTML = `
+        <div style="font-size:22px;margin-right:12px;line-height:1">🔒</div>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:#991b1b">Feedback Already Submitted &amp; Locked for ${escapeHtml(subjName)}</div>
+          <div style="font-size:12px;color:#7f1d1d;margin-top:2px">You have already submitted feedback for ${escapeHtml(subjName)} in this review cycle. Entry is locked to prevent duplicate submissions per person. Only HR or Super Admin can unlock this entry for editing.</div>
+        </div>
+      `;
+    }
+
+    if (formBody) {
+      formBody.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.id !== 'fb_subject') {
+          el.disabled = true;
+          el.style.opacity = '0.6';
+          el.style.cursor = 'not-allowed';
+        }
+      });
+      const starArea = formBody.querySelectorAll('.stars');
+      starArea.forEach(sa => {
+        sa.style.pointerEvents = 'none';
+        sa.style.opacity = '0.6';
+      });
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      submitBtn.style.cursor = 'not-allowed';
+      submitBtn.innerHTML = `🔒 Feedback Locked for ${escapeHtml(subjName)}`;
+    }
+  } else {
+    // UNLOCKED STATE: Enable all inputs for editing & resubmission
+    if (lockNotice) {
+      lockNotice.style.display = 'flex';
+      lockNotice.style.background = 'rgba(16, 185, 129, 0.08)';
+      lockNotice.style.border = '1px solid rgba(16, 185, 129, 0.25)';
+      lockNotice.style.color = '#047857';
+      lockNotice.innerHTML = `
+        <div style="font-size:22px;margin-right:12px;line-height:1">🔓</div>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:#065f46">Unlocked for Resubmission by HR / Super Admin</div>
+          <div style="font-size:12px;color:#047857;margin-top:2px">HR or Super Admin has unlocked your feedback entry for ${escapeHtml(subjName)}. You may update your ratings/comments and resubmit. It will automatically relock upon submission.</div>
+        </div>
+      `;
+    }
+
+    if (formBody) {
+      formBody.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.id !== 'fb_subject') {
+          el.disabled = false;
+          el.style.opacity = '1';
+          el.style.cursor = 'auto';
+        }
+      });
+      const starArea = formBody.querySelectorAll('.stars');
+      starArea.forEach(sa => {
+        sa.style.pointerEvents = 'auto';
+        sa.style.opacity = '1';
+      });
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.innerHTML = `Update &amp; Resubmit ${typeLabel(type)} Feedback →`;
+    }
+  }
+}
+
+function prefillFeedbackForm(existing) {
+  if (!existing) return;
+
+  const strengthsEl = document.getElementById('fb_strengths');
+  if (strengthsEl && existing.content) {
+    let plainContent = existing.content;
+    const jsonStart = plainContent.indexOf('{');
+    if (jsonStart !== -1) plainContent = plainContent.substring(0, jsonStart).trim();
+    strengthsEl.value = plainContent;
+  }
+
+  const impEl = document.getElementById('fb_improvements');
+  if (impEl && existing.improvements) {
+    impEl.value = existing.improvements;
+  }
+
+  const anonEl = document.getElementById('fb_anon');
+  if (anonEl) {
+    anonEl.checked = !!existing.is_anonymous;
+  }
+
+  if (existing.rating) {
+    const overallRatingEl = document.getElementById('rating_overall');
+    if (overallRatingEl) setStar('rating_overall', existing.rating);
+  }
+
+  let peerData = existing.peer_details;
+  if (!peerData && existing.content) {
+    try {
+      const jsonStart = existing.content.indexOf('{');
+      if (jsonStart !== -1) {
+        peerData = JSON.parse(existing.content.substring(jsonStart));
+      }
+    } catch(e) {}
+  }
+
+  if (peerData) {
+    if (peerData.metrics && Array.isArray(peerData.metrics)) {
+      peerData.metrics.forEach(m => {
+        const mKey = m.key || m.id;
+        if (mKey) {
+          if (m.rating) setStar('dyn_r_' + mKey, m.rating);
+          const inputEl = document.getElementById('dyn_f_' + mKey);
+          if (inputEl && m.feedback) inputEl.value = m.feedback;
+        }
+      });
+    }
+    if (peerData.questions && Array.isArray(peerData.questions)) {
+      peerData.questions.forEach(q => {
+        const qKey = q.id;
+        if (qKey) {
+          if (q.rating) setStar('dyn_r_' + qKey, q.rating);
+          const txtEl = document.getElementById('dyn_f_' + qKey);
+          if (txtEl && q.feedback) txtEl.value = q.feedback;
+        }
+      });
+    }
+  }
 }
 
 function fRating(id) {
@@ -246,17 +468,32 @@ async function submitFeedbackForm(type) {
     peer_details: peerDetailsObj
   };
 
-  await saveRecord(data);
-
-  toast(`✅ ${typeLabel(type)} feedback submitted successfully!`, 'success');
-  navigate('dashboard');
+  try {
+    await saveRecord(data);
+    await fetchFeedback();
+    toast(`✅ ${typeLabel(type)} feedback submitted successfully!`, 'success');
+    navigate('dashboard');
+  } catch (err) {
+    toast(`Submission failed: ${err.message}`, 'err');
+    await checkAndRenderFeedbackLockStatus(type);
+  }
 }
 
 async function saveRecord(data) {
   if (isDemo) {
+    const existingIndex = MOCK_FEEDBACK.findIndex(r => r.giver_id === currentProfile.id && r.receiver_id === data.receiver_id);
+    if (existingIndex !== -1) {
+      const existing = MOCK_FEEDBACK[existingIndex];
+      if (existing.is_locked !== false) {
+        throw new Error('Duplicate feedback submission for this person. Entry is locked. Only HR or Super Admin can unlock it.');
+      }
+      MOCK_FEEDBACK[existingIndex] = { ...existing, ...data, is_locked: true, created_at: new Date().toISOString() };
+      return;
+    }
     data.id = 'f-' + Date.now();
     data.giver_id = currentProfile.id;
     data.created_at = new Date().toISOString();
+    data.is_locked = true;
     MOCK_FEEDBACK.unshift(data);
     return;
   }

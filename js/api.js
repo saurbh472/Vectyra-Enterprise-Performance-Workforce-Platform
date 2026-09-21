@@ -195,9 +195,40 @@ const API = {
     });
   },
 
-  // Skill Templates & Quarterly Reviews
+  async unlockFeedback(id) {
+    return await this.request(`/api/feedback/${id}/unlock`, {
+      method: 'POST'
+    });
+  },
+
+  async lockFeedback(id) {
+    return await this.request(`/api/feedback/${id}/lock`, {
+      method: 'POST'
+    });
+  },
+
+
+  // Skill Templates & Master Templates Management
   async getSkillTemplates(teamId = 't2') {
     return await this.request(`/api/skill-templates?team_id=${encodeURIComponent(teamId)}`);
+  },
+
+  async getMasterTemplates() {
+    return await this.request('/api/skill-templates/master-templates');
+  },
+
+  async applyTemplateToTeam(templateName, teamId) {
+    return await this.request('/api/skill-templates/apply-template', {
+      method: 'POST',
+      body: JSON.stringify({ template_name: templateName, team_id: teamId })
+    });
+  },
+
+  async cloneTemplate(sourceTemplateName, newTemplateName) {
+    return await this.request('/api/skill-templates/clone-template', {
+      method: 'POST',
+      body: JSON.stringify({ source_template_name: sourceTemplateName, new_template_name: newTemplateName })
+    });
   },
 
   async addSkillTemplate(data) {
@@ -219,6 +250,45 @@ const API = {
       method: 'DELETE'
     });
   },
+
+  // Bug Tracker Management
+  async getBugs(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    return await this.request(`/api/bugs${query ? '?' + query : ''}`);
+  },
+
+  async createBug(data) {
+    return await this.request('/api/bugs', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateBug(id, data) {
+    return await this.request(`/api/bugs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteBug(id) {
+    return await this.request(`/api/bugs/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getEnabledBugTeams() {
+    return await this.request('/api/bugs/settings/enabled-teams');
+  },
+
+  async updateEnabledBugTeams(teamIds) {
+    return await this.request('/api/bugs/settings/enabled-teams', {
+      method: 'POST',
+      body: JSON.stringify({ enabled_team_ids: teamIds })
+    });
+  },
+
+
 
   async getQuarterlyReviews(params = {}) {
     const query = new URLSearchParams(params).toString();

@@ -12,6 +12,19 @@ let currentFeedbackFilter = {
 async function pageSubmit() {
   const main = document.getElementById('pageContent');
   const myTeam = allTeams.find(t => t.id === currentProfile?.team_id);
+  const data = await fetchFeedback();
+  const mySubmissions = data.filter(r => r.giver_id === currentProfile?.id || (isDemo && r.submitted_by === currentProfile?.id));
+
+  const getTypeBadgeHtml = (typeKey) => {
+    const subs = mySubmissions.filter(r => (r.feedback_type === typeKey || r.type === typeKey));
+    if (!subs.length) return '';
+    const hasUnlocked = subs.some(s => s.is_locked === false);
+    if (hasUnlocked) {
+      return `<div style="position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,.15);color:#047857;border:1px solid rgba(16,185,129,.3)">🔓 Unlocked</div>`;
+    }
+    return `<div style="position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:#b91c1c;border:1px solid rgba(239,68,68,.3)">🔒 Submitted &amp; Locked</div>`;
+  };
+
   main.innerHTML = `<div class="page-header">
     <div>
       <div class="page-title">Submit Feedback</div>
@@ -19,22 +32,28 @@ async function pageSubmit() {
     </div>
   </div><div class="content fade-up">
     <div class="type-grid">
-      <div class="type-card" style="--tc:#4f46e5" onclick="selectFormType('manager',this)">
+      <div class="type-card" style="--tc:#4f46e5;position:relative" onclick="selectFormType('manager',this)">
+        ${getTypeBadgeHtml('manager')}
         <div class="type-icon">🏆</div><div class="type-name">Manager Feedback</div><div class="type-desc">Review your manager's leadership, support &amp; direction</div>
       </div>
-      <div class="type-card" style="--tc:#059669" onclick="selectFormType('peer',this)">
+      <div class="type-card" style="--tc:#059669;position:relative" onclick="selectFormType('peer',this)">
+        ${getTypeBadgeHtml('peer')}
         <div class="type-icon">🤝</div><div class="type-name">Peer Review</div><div class="type-desc">Give structured feedback to teammates and peers</div>
       </div>
-      <div class="type-card" style="--tc:#d97706" onclick="selectFormType('hr',this)">
+      <div class="type-card" style="--tc:#d97706;position:relative" onclick="selectFormType('hr',this)">
+        ${getTypeBadgeHtml('hr')}
         <div class="type-icon">🏛️</div><div class="type-name">HR &amp; Culture</div><div class="type-desc">Evaluate HR responsiveness, culture &amp; workplace experience</div>
       </div>
-      <div class="type-card" style="--tc:#e11d48" onclick="selectFormType('self',this)">
+      <div class="type-card" style="--tc:#e11d48;position:relative" onclick="selectFormType('self',this)">
+        ${getTypeBadgeHtml('self')}
         <div class="type-icon">🪞</div><div class="type-name">Self Assessment</div><div class="type-desc">Reflect on your own KRAs, accomplishments &amp; growth areas</div>
       </div>
-      <div class="type-card" style="--tc:#0284c7" onclick="selectFormType('360',this)">
+      <div class="type-card" style="--tc:#0284c7;position:relative" onclick="selectFormType('360',this)">
+        ${getTypeBadgeHtml('360')}
         <div class="type-icon">🔄</div><div class="type-name">Cross Functional Feedback</div><div class="type-desc">Evaluate colleagues working across different teams &amp; functions</div>
       </div>
-      <div class="type-card" style="--tc:#ca8a04" onclick="selectFormType('exit',this)">
+      <div class="type-card" style="--tc:#ca8a04;position:relative" onclick="selectFormType('exit',this)">
+        ${getTypeBadgeHtml('exit')}
         <div class="type-icon">🚪</div><div class="type-name">Exit Interview</div><div class="type-desc">Feedback upon departure or offboarding</div>
       </div>
     </div>
@@ -191,8 +210,13 @@ function renderFeedbackRows(data) {
       <td style="font-weight:600;color:var(--a3)">${r.rating ? r.rating : (r.score ? Number(r.score).toFixed(1) : '—')} ★</td>
       <td style="font-size:12px;color:var(--t3)">${fmtDate(r.created_at)}</td>
       <td style="text-align:right">
-        <div style="display:flex;gap:6px;justify-content:flex-end">
+        <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
           <button class="btn btn-ghost btn-sm" onclick="openDetail('${r.id}')">View Detail</button>
+          ${canSeeAll() ? (r.is_locked !== false ? `
+            <button class="btn btn-ghost btn-sm" style="color:var(--a3);font-weight:600" onclick="toggleFeedbackLock('${r.id}', false)" title="Unlock so employee can edit/resubmit">🔓 Unlock</button>
+          ` : `
+            <button class="btn btn-ghost btn-sm" style="color:var(--a2);font-weight:600" onclick="toggleFeedbackLock('${r.id}', true)" title="Relock feedback entry">🔒 Relock</button>
+          `) : ''}
           ${isSuper() ? `<button class="btn btn-ghost btn-sm" style="color:var(--err)" onclick="deleteRecord('${r.id}')" title="Delete entry so employee can resubmit">🗑️ Delete</button>` : ''}
         </div>
       </td>
@@ -219,27 +243,57 @@ async function pageMyFeedback() {
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Type</th><th>Review Subject</th><th>Your Rating</th><th>Anonymous?</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead>
+          <thead><tr><th>Type</th><th>Review Subject</th><th>Your Rating</th><th>Anonymous?</th><th>Date</th><th>Lock Status</th><th style="text-align:right">Actions</th></tr></thead>
           <tbody>
             ${mySubmissions.length ? mySubmissions.map(r => {
               const receiverName = userMap[r.receiver_id] || r.subject_name || 'Team Member';
               const typeKey = r.feedback_type || r.type || 'peer';
+              const isLocked = r.is_locked !== false;
               return `<tr>
                 <td><span class="badge badge-${typeKey}">${typeLabel(typeKey)}</span></td>
                 <td style="color:var(--text);font-weight:600">${escapeHtml(receiverName)}</td>
                 <td style="font-weight:600;color:var(--a3)">${r.rating ? r.rating : (r.score ? Number(r.score).toFixed(1) : '—')} ★</td>
                 <td>${r.is_anonymous ? '<span style="color:var(--a2);font-weight:600">🔒 Yes (Anonymous)</span>' : '<span style="color:var(--t3)">No</span>'}</td>
                 <td style="font-size:12px;color:var(--t3)">${fmtDate(r.created_at)}</td>
+                <td>
+                  ${isLocked ? `
+                    <span class="badge" style="background:rgba(239,68,68,.12);color:#b91c1c;border:1px solid rgba(239,68,68,.3);font-weight:700">🔒 Locked (Submitted)</span>
+                  ` : `
+                    <span class="badge" style="background:rgba(16,185,129,.12);color:#047857;border:1px solid rgba(16,185,129,.3);font-weight:700">🔓 Unlocked by HR</span>
+                  `}
+                </td>
                 <td style="text-align:right">
-                  <button class="btn btn-ghost btn-sm" onclick="openDetail('${r.id}')">View Details</button>
+                  <div style="display:flex;gap:6px;justify-content:flex-end">
+                    <button class="btn btn-ghost btn-sm" onclick="openDetail('${r.id}')">View Details</button>
+                    ${!isLocked ? `
+                      <button class="btn btn-primary btn-sm" onclick="editUnlockedSubmission('${r.id}')">✏️ Edit &amp; Resubmit</button>
+                    ` : ''}
+                  </div>
                 </td>
               </tr>`;
-            }).join('') : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📝</div><div class="empty-sub">You have not submitted any feedback yet</div><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('submit')">+ Submit Feedback</button></div></td></tr>`}
+            }).join('') : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📝</div><div class="empty-sub">You have not submitted any feedback yet</div><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="navigate('submit')">+ Submit Feedback</button></div></td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
   </div>`;
+}
+
+async function editUnlockedSubmission(id) {
+  const data = (feedbackCache && feedbackCache.length) ? feedbackCache : await fetchFeedback();
+  const r = data.find(x => x.id === id) || (isDemo ? MOCK_FEEDBACK.find(x => x.id === id) : null);
+  if (!r) return toast('Record not found', 'err');
+  const typeKey = r.feedback_type || r.type || 'peer';
+  await navigate('submit');
+  const card = Array.from(document.querySelectorAll('.type-card')).find(c => c.getAttribute('onclick')?.includes(`'${typeKey}'`));
+  if (card) {
+    selectFormType(typeKey, card);
+    const subjEl = document.getElementById('fb_subject');
+    if (subjEl) {
+      subjEl.value = r.receiver_id;
+      checkAndRenderFeedbackLockStatus(typeKey);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -333,6 +387,7 @@ async function openDetail(id) {
     <div class="detail-row"><div class="dk">Submitted By</div><div class="dv">${escapeHtml(giverName)}</div></div>
     <div class="detail-row"><div class="dk">Receiver / Subject</div><div class="dv"><strong>${escapeHtml(receiverName)}</strong></div></div>
     <div class="detail-row"><div class="dk">Overall Score</div><div class="dv" style="font-weight:800;color:var(--a3);font-size:18px">${r.rating || r.score || 5} / 5.0 ★</div></div>
+    <div class="detail-row"><div class="dk">Lock Status</div><div class="dv">${r.is_locked !== false ? '<span style="color:var(--err);font-weight:700">🔒 Locked (Submitted)</span>' : '<span style="color:var(--a3);font-weight:700">🔓 Unlocked by HR / Super Admin</span>'}</div></div>
 
     ${plainContentText && !plainContentText.startsWith('Evaluated across') ? `
       <div style="margin-top:14px;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:8px">
@@ -346,12 +401,42 @@ async function openDetail(id) {
     <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--border)">
       <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Print Response Report</button>
       <div style="display:flex;gap:8px">
+        ${canSeeAll() ? (r.is_locked !== false ? `
+          <button class="btn btn-ghost btn-sm" style="color:var(--a3);font-weight:600" onclick="toggleFeedbackLock('${r.id}', false)">🔓 Unlock for Resubmission</button>
+        ` : `
+          <button class="btn btn-ghost btn-sm" style="color:var(--a2);font-weight:600" onclick="toggleFeedbackLock('${r.id}', true)">🔒 Relock Entry</button>
+        `) : ''}
         ${isSuper() ? `<button class="btn btn-danger btn-sm" onclick="deleteRecord('${r.id}')">🗑️ Delete for Resubmission</button>` : ''}
         <button class="btn btn-ghost" onclick="closeModal()">Close</button>
       </div>
     </div>`;
 
   openModal();
+}
+
+async function toggleFeedbackLock(id, setLocked) {
+  if (isDemo) {
+    const r = MOCK_FEEDBACK.find(x => x.id === id);
+    if (r) r.is_locked = setLocked;
+  } else {
+    try {
+      if (setLocked) {
+        await API.lockFeedback(id);
+      } else {
+        await API.unlockFeedback(id);
+      }
+    } catch (err) {
+      toast(`Action failed: ${err.message}`, 'err');
+      return;
+    }
+  }
+  await fetchFeedback();
+  toast(setLocked ? '🔒 Feedback entry locked' : '🔓 Feedback entry unlocked for resubmission', 'success');
+  if (document.getElementById('modalTitle')) closeModal();
+  if (document.getElementById('feedbackTableBody')) {
+    const tbody = document.getElementById('feedbackTableBody');
+    tbody.innerHTML = renderFeedbackRows(feedbackCache);
+  }
 }
 
 async function deleteRecord(id) {

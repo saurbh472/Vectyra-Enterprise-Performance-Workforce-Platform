@@ -123,6 +123,7 @@ function buildNav() {
   sections.push({
     label: 'Planning & Execution', items: [
       { id: 'roadmap', icon: '🗺️', label: 'Team Roadmap' },
+      { id: 'bugs', icon: '🐛', label: 'Bug Tracker' },
     ]
   });
   sections.push({
@@ -186,7 +187,7 @@ function navigate(pageId) {
 
   const pages = {
     dashboard: pageDashboard, analytics: pageAnalytics,
-    roadmap: pageTeamRoadmap,
+    roadmap: pageTeamRoadmap, bugs: pageBugTracker,
     quarterly: pageQuarterlyFeedback,
     submit: pageSubmit, myFeedback: pageMyFeedback,
     allFeedback: pageAllFeedback, users: pageUsers,
