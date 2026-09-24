@@ -85,6 +85,9 @@ async function doLogout() {
   }
   currentUser = null;
   currentProfile = null;
+  if (typeof qrCurrentTab !== 'undefined') qrCurrentTab = 'form';
+  if (typeof qrActiveStep !== 'undefined') qrActiveStep = 1;
+  window.qrGallerySelectedTeamId = null;
   showAuth();
   toast('Signed out successfully', 'info');
 }

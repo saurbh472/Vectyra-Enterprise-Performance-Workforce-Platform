@@ -16,7 +16,7 @@ async function pageAnalytics() {
   await loadMeta();
   const [feedbackData, roadmaps, quarterlyReviews] = await Promise.all([
     fetchFeedback().catch(() => []),
-    (typeof fetchRoadmapsData === 'function' ? fetchRoadmapsData() : (Array.isArray(cachedRoadmaps) ? cachedRoadmaps : MOCK_ROADMAPS)).catch(() => MOCK_ROADMAPS),
+    Promise.resolve(typeof fetchRoadmapsData === 'function' ? fetchRoadmapsData() : (Array.isArray(cachedRoadmaps) ? cachedRoadmaps : MOCK_ROADMAPS)).catch(() => MOCK_ROADMAPS),
     API.getQuarterlyReviews({}).catch(() => [])
   ]);
 

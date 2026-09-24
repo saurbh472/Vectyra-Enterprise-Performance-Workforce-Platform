@@ -300,7 +300,8 @@ async function editUnlockedSubmission(id) {
 // DETAILED QUESTION & ANSWER FEEDBACK MODAL
 // ═══════════════════════════════════════════════
 async function openDetail(id) {
-  let r = feedbackCache.find(x => x.id === id) || (isDemo ? MOCK_FEEDBACK.find(x => x.id === id) : null);
+  const data = (Array.isArray(feedbackCache) && feedbackCache.length) ? feedbackCache : await fetchFeedback();
+  let r = data.find(x => x.id === id) || (isDemo ? MOCK_FEEDBACK.find(x => x.id === id) : null);
   if (!r) return toast('Record not found', 'err');
 
   const userMap = {};

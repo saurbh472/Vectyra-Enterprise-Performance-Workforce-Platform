@@ -209,8 +209,12 @@ const API = {
 
 
   // Skill Templates & Master Templates Management
-  async getSkillTemplates(teamId = 't2') {
-    return await this.request(`/api/skill-templates?team_id=${encodeURIComponent(teamId)}`);
+  async getSkillTemplates(teamId = null, templateName = null) {
+    const params = new URLSearchParams();
+    if (teamId) params.append('team_id', teamId);
+    if (templateName) params.append('template_name', templateName);
+    const qStr = params.toString();
+    return await this.request(`/api/skill-templates${qStr ? '?' + qStr : ''}`);
   },
 
   async getMasterTemplates() {

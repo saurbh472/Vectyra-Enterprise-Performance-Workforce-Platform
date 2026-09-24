@@ -28,6 +28,10 @@ function renderApp() {
   document.getElementById('appShell').style.display = 'block';
   document.getElementById('demoBanner').style.display = isDemo ? 'flex' : 'none';
 
+  if (typeof qrCurrentTab !== 'undefined') qrCurrentTab = 'form';
+  if (typeof qrActiveStep !== 'undefined') qrActiveStep = 1;
+  window.qrGallerySelectedTeamId = null;
+
   const r = currentProfile;
   document.getElementById('sbAvatar').textContent = avatarInitials(r?.full_name || '?');
   document.getElementById('sbName').textContent = r?.full_name || 'User';

@@ -6,7 +6,7 @@ async function pageUsers() {
   await loadMeta();
 
   // Fetch feedback cache if empty for stats
-  if (!feedbackCache.length && !isDemo) {
+  if ((!Array.isArray(feedbackCache) || !feedbackCache.length) && !isDemo) {
     try { feedbackCache = await API.getFeedback(); } catch(e) {}
   }
 
@@ -193,8 +193,9 @@ function openViewUserModal(userId) {
 
   const userBadges = allBadges.filter(b => b.awarded_to === u.id);
   const userGoals  = allGoals.filter(g => g.assigned_to === u.id);
-  const fbReceived = feedbackCache.filter(f => f.receiver_id === u.id || f.subject_id === u.id);
-  const fbGiven    = feedbackCache.filter(f => f.giver_id === u.id || f.submitted_by === u.id);
+  const fbList = Array.isArray(feedbackCache) ? feedbackCache : [];
+  const fbReceived = fbList.filter(f => f.receiver_id === u.id || f.subject_id === u.id);
+  const fbGiven    = fbList.filter(f => f.giver_id === u.id || f.submitted_by === u.id);
 
   // Compute avg rating
   const ratings = fbReceived.filter(f => f.rating || f.score).map(f => Number(f.rating || f.score));

@@ -79,6 +79,17 @@ async function pageQuarterlyFeedback() {
   const isSuperAdmin = currentProfile?.role === 'super_admin';
   const isMgr = isManager() || canSeeAll();
 
+  // Validate active tab access permissions for current role
+  if (qrCurrentTab === 'templateGallery' && !canSeeAll()) {
+    qrCurrentTab = 'form';
+  }
+  if (qrCurrentTab === 'templateBuilder' && !isSuperAdmin) {
+    qrCurrentTab = 'form';
+  }
+  if (qrCurrentTab === 'teamReviews' && !isMgr) {
+    qrCurrentTab = 'form';
+  }
+
   // Load master templates for gallery header strip
   let masterTemplates = [];
   try { masterTemplates = await API.getMasterTemplates(); } catch(e) { masterTemplates = []; }
@@ -268,7 +279,25 @@ function updateQuarterMonths() {
 
 async function loadQuarterlyFeedbackData() {
   try {
-    const templates = await API.getSkillTemplates(qrSelectedTeamId);
+    let templates = await API.getSkillTemplates(qrSelectedTeamId);
+    
+    // Fallback for team default templates if no team-specific skills returned
+    if (!templates || templates.length === 0) {
+      const defaultTeamMap = {
+        't2': 'SDN / Backend Platform Template',
+        't1': 'Frontend Engineering Template',
+        't-qa': 'QA / Quality Assurance & Testing Template',
+        't3': 'Product & Design Template',
+        't4': 'HR Operations Template',
+        't5': 'Growth Marketing Template'
+      };
+      const fallbackName = defaultTeamMap[qrSelectedTeamId] || 'SDN / Backend Platform Template';
+      try {
+        templates = await API.getSkillTemplates(null, fallbackName);
+      } catch (e) {
+        templates = [];
+      }
+    }
     
     const reviews = await API.getQuarterlyReviews({
       employee_id: currentProfile.id,
@@ -284,11 +313,25 @@ async function loadQuarterlyFeedbackData() {
       qrSelfReviewState = typeof rev.self_review_data === 'string' ? JSON.parse(rev.self_review_data) : rev.self_review_data;
       qrKpiState = typeof rev.kpi_data === 'string' ? JSON.parse(rev.kpi_data) : rev.kpi_data;
       qrSkillMatrixState = typeof rev.skill_matrix_data === 'string' ? JSON.parse(rev.skill_matrix_data) : rev.skill_matrix_data;
+      if (!qrSkillMatrixState || qrSkillMatrixState.length === 0) {
+        qrSkillMatrixState = (templates || []).map(t => ({
+          id: t.id,
+          category: t.category,
+          skill: t.skill_name,
+          description: t.description || '',
+          scope: t.scope || (t.is_backend && t.is_frontend ? 'Backend, Frontend' : t.is_backend ? 'Backend' : t.is_frontend ? 'Frontend' : 'General'),
+          selfRating: 4,
+          comments: '',
+          trainingRequired: 'NO',
+          managerRating: 0,
+          managerComments: ''
+        }));
+      }
     } else {
       qrLoadedReviewId = null;
       qrLoadedReviewStatus = 'draft';
       qrLoadedIsUnlocked = false;
-      qrSkillMatrixState = templates.map(t => ({
+      qrSkillMatrixState = (templates || []).map(t => ({
         id: t.id,
         category: t.category,
         skill: t.skill_name,
@@ -730,8 +773,20 @@ async function onQrFormTeamChange(teamId) {
   }
   qrSelectedTeamId = teamId;
   try {
-    const templates = await API.getSkillTemplates(teamId);
-    qrSkillMatrixState = templates.map(t => ({
+    let templates = await API.getSkillTemplates(teamId);
+    if (!templates || templates.length === 0) {
+      const defaultTeamMap = {
+        't2': 'SDN / Backend Platform Template',
+        't1': 'Frontend Engineering Template',
+        't-qa': 'QA / Quality Assurance & Testing Template',
+        't3': 'Product & Design Template',
+        't4': 'HR Operations Template',
+        't5': 'Growth Marketing Template'
+      };
+      const fallbackName = defaultTeamMap[teamId] || 'SDN / Backend Platform Template';
+      try { templates = await API.getSkillTemplates(null, fallbackName); } catch(e) { templates = []; }
+    }
+    qrSkillMatrixState = (templates || []).map(t => ({
       id: t.id,
       category: t.category,
       skill: t.skill_name,

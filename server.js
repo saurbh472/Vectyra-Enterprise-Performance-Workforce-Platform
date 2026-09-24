@@ -1557,8 +1557,21 @@ app.post('/api/skill-templates/apply-template', authenticateToken, async (req, r
     return res.status(400).json({ error: 'Template name and target team ID are required.' });
   }
 
-  // Find source template items
-  const sourceItems = memSkillTemplates.filter(st => (st.template_name || '') === template_name || st.team_id === template_name);
+  const reqLower = template_name.toLowerCase().trim();
+
+  // Find source template items with flexible matching
+  let sourceItems = memSkillTemplates.filter(st => {
+    const tName = (st.template_name || '').toLowerCase();
+    return tName === reqLower || tName.includes(reqLower) || reqLower.includes(tName) || st.team_id === template_name;
+  });
+
+  if (usePg && !sourceItems.length) {
+    try {
+      const q = await pool.query('SELECT * FROM skill_templates WHERE LOWER(template_name) LIKE LOWER($1)', [`%${template_name}%`]);
+      if (q.rows.length > 0) sourceItems = q.rows;
+    } catch(e) {}
+  }
+
   if (!sourceItems.length) {
     return res.status(404).json({ error: `No skill items found for template '${template_name}'.` });
   }
@@ -1600,7 +1613,11 @@ app.post('/api/skill-templates/clone-template', authenticateToken, requireRoles(
     return res.status(400).json({ error: 'Source template name and new template name are required.' });
   }
 
-  const sourceItems = memSkillTemplates.filter(st => (st.template_name || '') === source_template_name);
+  const reqLower = source_template_name.toLowerCase().trim();
+  const sourceItems = memSkillTemplates.filter(st => {
+    const tName = (st.template_name || '').toLowerCase();
+    return tName === reqLower || tName.includes(reqLower) || reqLower.includes(tName);
+  });
   if (!sourceItems.length) {
     return res.status(404).json({ error: 'Source template not found.' });
   }
@@ -1620,28 +1637,60 @@ app.get('/api/skill-templates', authenticateToken, async (req, res) => {
   const teamId = req.query.team_id;
   const templateName = req.query.template_name;
 
+  const defaultTemplateMap = {
+    't2': 'SDN / Backend Platform Template',
+    't1': 'Frontend Engineering Template',
+    't-qa': 'QA / Quality Assurance & Testing Template',
+    't3': 'Product & Design Template',
+    't4': 'HR Operations Template',
+    't5': 'Growth Marketing Template'
+  };
+
   if (usePg) {
-    if (templateName) {
-      const q = await pool.query('SELECT * FROM skill_templates WHERE template_name = $1 ORDER BY category ASC, skill_name ASC', [templateName]);
-      if (q.rows.length > 0) return res.json(q.rows);
+    try {
+      if (templateName) {
+        const q = await pool.query('SELECT * FROM skill_templates WHERE LOWER(template_name) LIKE LOWER($1) ORDER BY category ASC, skill_name ASC', [`%${templateName}%`]);
+        if (q.rows.length > 0) return res.json(q.rows);
+      }
+      if (teamId && teamId !== 'ALL') {
+        const q = await pool.query('SELECT * FROM skill_templates WHERE team_id = $1 ORDER BY category ASC, skill_name ASC', [teamId]);
+        if (q.rows.length > 0) return res.json(q.rows);
+        
+        // PG returned 0 items for team_id — fallback to team default master template
+        const fallbackName = defaultTemplateMap[teamId] || 'SDN / Backend Platform Template';
+        const fallbackQ = await pool.query('SELECT * FROM skill_templates WHERE LOWER(template_name) LIKE LOWER($1) ORDER BY category ASC, skill_name ASC', [`%${fallbackName}%`]);
+        if (fallbackQ.rows.length > 0) return res.json(fallbackQ.rows);
+      } else if (!teamId || teamId === 'ALL') {
+        const q = await pool.query('SELECT * FROM skill_templates ORDER BY team_id ASC, category ASC, skill_name ASC');
+        if (q.rows.length > 0) return res.json(q.rows);
+      }
+    } catch (e) {
+      console.warn('PG get skill-templates error:', e.message);
     }
-    if (!teamId || teamId === 'ALL') {
-      const q = await pool.query('SELECT * FROM skill_templates ORDER BY team_id ASC, category ASC, skill_name ASC');
-      return res.json(q.rows);
-    }
-    const q = await pool.query('SELECT * FROM skill_templates WHERE team_id = $1 ORDER BY category ASC, skill_name ASC', [teamId]);
-    return res.json(q.rows);
-  } else {
-    if (templateName) {
-      const items = memSkillTemplates.filter(st => (st.template_name || '') === templateName);
-      if (items.length > 0) return res.json(items);
-    }
-    if (!teamId || teamId === 'ALL') {
-      return res.json(memSkillTemplates);
-    }
-    const items = memSkillTemplates.filter(st => st.team_id === teamId);
+  }
+
+  // Memory fallback logic
+  if (templateName) {
+    const reqLower = templateName.toLowerCase().trim();
+    const items = memSkillTemplates.filter(st => {
+      const tName = (st.template_name || '').toLowerCase();
+      return tName === reqLower || tName.includes(reqLower) || reqLower.includes(tName);
+    });
+    if (items.length > 0) return res.json(items);
+  }
+
+  if (teamId && teamId !== 'ALL') {
+    let items = memSkillTemplates.filter(st => st.team_id === teamId);
+    if (items.length > 0) return res.json(items);
+
+    // Fallback to default template for team
+    const fallbackName = defaultTemplateMap[teamId] || 'SDN / Backend Platform Template';
+    const fallbackLower = fallbackName.toLowerCase();
+    items = memSkillTemplates.filter(st => (st.template_name || '').toLowerCase().includes(fallbackLower));
     return res.json(items);
   }
+
+  return res.json(memSkillTemplates);
 });
 
 // CREATE-CUSTOM: Any authenticated user can create a custom template skill entry
